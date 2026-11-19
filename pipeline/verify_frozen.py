@@ -12,6 +12,7 @@ RULE_DIRS = {
     "baseline_c": REPO_ROOT / "rules" / "baseline_c",
     "round1": REPO_ROOT / "rules" / "round1",
     "round2": REPO_ROOT / "rules" / "round2",
+    "round3": REPO_ROOT / "rules" / "round3",
 }
 
 # 冻结记录里「依赖」条目的原始相对路径 → 本仓库路径
@@ -19,6 +20,7 @@ DEP_MAP = {
     "output/盲测_版面约束/冻结规则": RULE_DIRS["baseline_c"],
     "output/盲测_版面约束/版面分析优化计划/试算/冻结_新盲测前": RULE_DIRS["round1"],
     "output/盲测_版面约束/版面分析优化计划/试算/第2轮/冻结": RULE_DIRS["round2"],
+    "output/盲测_版面约束/版面分析优化计划/试算/第3轮/冻结": RULE_DIRS["round3"],
     "output/盲测_版面约束/版面分析优化计划/试算/第2轮/route_r1_cli.py": RULE_DIRS["round2"] / "route_r1_cli.py",
     "output/synth18e_prep/frozen_方案E.json": REPO_ROOT / "output" / "synth18e_prep" / "frozen_方案E.json",
     "src": RULE_DIRS["baseline_c"] / "基线C_方案E" / "src",
@@ -72,7 +74,7 @@ def check_record(md_path: Path, base: Path) -> list[str]:
 
 
 def main(ns: argparse.Namespace | None = None) -> int:
-    names = ["baseline_c", "round1", "round2"]
+    names = ["baseline_c", "round1", "round2", "round3"]
     if ns is not None and getattr(ns, "round_name", "all") != "all":
         names = [ns.round_name]
     failed = 0
@@ -107,5 +109,5 @@ def main(ns: argparse.Namespace | None = None) -> int:
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="核对冻结规则 sha256")
-    ap.add_argument("--round", dest="round_name", default="all", choices=["all", "baseline_c", "round1", "round2"])
+    ap.add_argument("--round", dest="round_name", default="all", choices=["all", "baseline_c", "round1", "round2", "round3"])
     raise SystemExit(main(ap.parse_args()))

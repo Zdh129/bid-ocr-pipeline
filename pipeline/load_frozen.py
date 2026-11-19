@@ -15,6 +15,7 @@ RULES = {
     "baseline_c": REPO_ROOT / "rules" / "baseline_c",
     "round1": REPO_ROOT / "rules" / "round1",
     "round2": REPO_ROOT / "rules" / "round2",
+    "round3": REPO_ROOT / "rules" / "round3",
 }
 
 
@@ -66,9 +67,15 @@ def load_round(round_name: str) -> dict[str, ModuleType]:
         out["frozen_stack"] = load_frozen_module(
             "frozen_stack", d / "frozen_stack.py", "_frozen_round1_stack"
         )
-    else:
+    elif round_name == "round2":
         out["frozen_stack2"] = load_frozen_module(
             "frozen_stack2", d / "frozen_stack2.py", "_frozen_round2_stack"
         )
         out["lp2"] = load_frozen_module("lp2", d / "lp2.py", "_frozen_round2_lp2")
+    else:
+        # 第3轮：frozen_stack3 在本目录内 import lp3 / final_stack3 / head_fix（F4、F5）
+        out["frozen_stack3"] = load_frozen_module(
+            "frozen_stack3", d / "frozen_stack3.py", "_frozen_round3_stack"
+        )
+        out["lp3"] = sys.modules.get("lp3") or load_frozen_module("lp3", d / "lp3.py", "_frozen_round3_lp3")
     return out

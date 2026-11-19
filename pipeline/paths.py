@@ -53,6 +53,7 @@ def remap_lab_path(path: str | Path) -> Path:
             Path("output/盲测_版面约束/冻结规则"): REPO_ROOT / "rules" / "baseline_c",
             Path("output/盲测_版面约束/版面分析优化计划/试算/冻结_新盲测前"): REPO_ROOT / "rules" / "round1",
             Path("output/盲测_版面约束/版面分析优化计划/试算/第2轮/冻结"): REPO_ROOT / "rules" / "round2",
+            Path("output/盲测_版面约束/版面分析优化计划/试算/第3轮/冻结"): REPO_ROOT / "rules" / "round3",
             Path("output/synth18e_prep/frozen_方案E.json"): REPO_ROOT / "output" / "synth18e_prep" / "frozen_方案E.json",
         }
         for old, new in mapping.items():

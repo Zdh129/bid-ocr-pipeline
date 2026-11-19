@@ -84,7 +84,7 @@ def _run_stack(ns, which: str) -> int:
     C = raw["C"] if isinstance(raw, dict) and "C" in raw else raw
     from pipeline.load_frozen import load_round
     mods = load_round(which)
-    stack = mods["frozen_stack"] if which == "round1" else mods["frozen_stack2"]
+    stack = {"round1": mods.get("frozen_stack"), "round2": mods.get("frozen_stack2"), "round3": mods.get("frozen_stack3")}[which]
     st, log = stack.run_stack(
         C,
         ns.scheme_a_dir,
@@ -134,6 +134,10 @@ def main(argv: list[str] | None = None) -> int:
     _add_common(p2)
     p2.set_defaults(func=lambda ns: _run_stack(ns, "round2"))
 
+    p2b = sub.add_parser("round3", help="第3轮冻结路线（当前推荐）：第2轮＋F4 格内折行续行归格＋F5 页首行坐标复位，纯本地")
+    _add_common(p2b)
+    p2b.set_defaults(func=lambda ns: _run_stack(ns, "round3"))
+
     p3 = sub.add_parser("score", help="主口径（tolerant_score）与严格口径（score_system）一次性计分")
     p3.add_argument("--pred", required=False, help="预测 JSON（页码 -> 页，或含 C/冻结路线 等键）")
     p3.add_argument("--dataset", required=False, help="data/<集名> 目录或集名")
@@ -144,7 +148,7 @@ def main(argv: list[str] | None = None) -> int:
     p3.set_defaults(func=cmd_score)
 
     p4 = sub.add_parser("verify", help="核对 rules/ 中冻结文件的 sha256，不改文件")
-    p4.add_argument("--round", dest="round_name", default="all", choices=["all", "baseline_c", "round1", "round2"])
+    p4.add_argument("--round", dest="round_name", default="all", choices=["all", "baseline_c", "round1", "round2", "round3"])
     p4.set_defaults(func=cmd_verify)
 
     p5 = sub.add_parser("check-env", help="只报告密钥环境变量是否已设置，不打印值，不联网")
