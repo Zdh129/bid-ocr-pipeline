@@ -1,0 +1,46 @@
+# 本地环境与密钥
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+
+# 数据、缓存、运行输出、日志（不得入库）
+data/*
+!data/.gitkeep
+!data/README.md
+!data/fixtures/
+!data/fixtures/mock_*.json
+cache/
+output/*
+!output/.gitkeep
+!output/synth18e_prep/
+!output/synth18e_prep/frozen_方案E.json
+!output/blindset2_prep/
+!output/blindset2_prep/frozen_config_v2.json
+*.log
+*.pdf
+*.png
+*.jpg
+*.jpeg
+*.tif
+*.tiff
+*.bmp
+SCORED
+
+# 编辑器
+.idea/
+.vscode/
+*.swp
+.DS_Store

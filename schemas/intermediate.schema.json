@@ -1,0 +1,888 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pdf-test.local/gen/schema/intermediate.schema.json",
+  "title": "标书识别中间格式",
+  "description": "PDF 百分百识别项目生成侧使用的结构化中间格式。坐标系默认：页面左上角为原点，x 向右、y 向下。长度单位为 pt（1 pt = 1/72 inch）或 px（使用 px 时必须给出对应 DPI）。本 schema 面向识别侧（PaddleOCR / PP-Structure / 视觉模型 / PyMuPDF）直接输出。schema 版本：1.0.0",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "document",
+    "coordinate_system",
+    "pages",
+    "blocks",
+    "assets"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0.0",
+      "description": "中间格式 schema 版本，当前固定为 1.0.0。"
+    },
+    "data_label": {
+      "type": "string",
+      "enum": [
+        "production",
+        "example",
+        "constructed"
+      ],
+      "description": "数据来源标注。production=真实识别产出；example=文档示例；constructed=人工构造的测试数据。"
+    },
+    "document": {
+      "$ref": "#/$defs/document"
+    },
+    "coordinate_system": {
+      "$ref": "#/$defs/coordinateSystem"
+    },
+    "pages": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/page"
+      },
+      "description": "页面数组，按 page_number 升序。"
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/block"
+      },
+      "description": "全部内容块。阅读顺序以 reading_order 为准，不以数组下标为准。"
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/asset"
+      },
+      "description": "外部资源清单（图片、印章、扫描裁块等）。允许为空数组。"
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/warning"
+      },
+      "description": "文档级警告，可选。"
+    },
+    "needs_review": {
+      "type": "boolean",
+      "description": "文档是否需要人工复核。任一关键块 needs_review 为 true 时建议置 true。"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "isoDateTime": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 日期时间，建议带时区，例如 2026-11-17T12:00:00+08:00。"
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "置信度，范围 [0, 1]。规则生成的块可填 1.0。"
+    },
+    "bbox": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "number"
+      },
+      "description": "[x0, y0, x1, y1]。原点为页面左上角（或资源图片左上角，当用于 crop_bbox 时），x 向右、y 向下。必须满足 x1 > x0 且 y1 > y0。"
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "required": [
+        "origin",
+        "x_axis",
+        "y_axis",
+        "default_unit"
+      ],
+      "properties": {
+        "origin": {
+          "type": "string",
+          "const": "top-left",
+          "description": "坐标系原点：页面左上角。"
+        },
+        "x_axis": {
+          "type": "string",
+          "const": "rightward",
+          "description": "x 轴向右增大。"
+        },
+        "y_axis": {
+          "type": "string",
+          "const": "downward",
+          "description": "y 轴向下增大（与 PDF 原生用户空间相反，与 PyMuPDF get_text 及图像像素坐标一致）。"
+        },
+        "default_unit": {
+          "type": "string",
+          "enum": [
+            "pt",
+            "px"
+          ],
+          "description": "块未声明 bbox_unit 时的默认单位。推荐 pt。"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "required": [
+        "source_file",
+        "page_count",
+        "generated_at",
+        "engine_name",
+        "engine_version",
+        "schema_version"
+      ],
+      "properties": {
+        "source_file": {
+          "type": "string",
+          "minLength": 1,
+          "description": "来源文件名或相对路径（PDF / 图片 / 扫描件）。"
+        },
+        "source_type": {
+          "type": "string",
+          "enum": [
+            "pdf",
+            "image",
+            "scan",
+            "mixed"
+          ],
+          "description": "来源类型。扫描 PDF 建议标为 scan。"
+        },
+        "source_hash_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "来源文件 SHA-256，可选但推荐。"
+        },
+        "title": {
+          "type": "string",
+          "description": "文档标题（若已识别）。"
+        },
+        "language": {
+          "type": "string",
+          "default": "zh-CN",
+          "description": "主语言 BCP 47 标签，标书默认 zh-CN。"
+        },
+        "page_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "本 JSON 所含页数，必须与 pages 数组长度一致。摘页场景下可以小于源 PDF 总页数，也不要求和 max(page_number) 相等。"
+        },
+        "generated_at": {
+          "$ref": "#/$defs/isoDateTime"
+        },
+        "engine_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "识别引擎或流水线名称，例如 paddleocr-pp-structure 或 pdf-recognize-pipeline。"
+        },
+        "engine_version": {
+          "type": "string",
+          "minLength": 1,
+          "description": "识别引擎版本号。"
+        },
+        "schema_version": {
+          "type": "string",
+          "const": "1.0.0",
+          "description": "本输出所遵循的中间格式 schema 版本，须与根级 schema_version 一致。"
+        },
+        "render_dpi_default": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "渲染默认 DPI，须与各页 render_dpi 对齐。识别侧约定 300。"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "page": {
+      "type": "object",
+      "required": [
+        "page_number",
+        "width",
+        "height",
+        "unit",
+        "render_dpi",
+        "rotation"
+      ],
+      "properties": {
+        "page_number": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "页码，从 1 开始，与源 PDF 页序一致。摘页/子集 JSON 应保留原始页码，不必从 1 重新编号；document.page_count 等于本 JSON 中 pages 数组长度，不必等于 max(page_number)。"
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "页面宽度，单位见 unit。"
+        },
+        "height": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "页面高度，单位见 unit。"
+        },
+        "unit": {
+          "type": "string",
+          "enum": [
+            "pt",
+            "px"
+          ],
+          "description": "width/height 的单位。推荐 pt（A4 宽约 595.28 pt）。若为 px，则按 render_dpi 解释。"
+        },
+        "render_dpi": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "本页渲染 DPI，必填。识别侧使用 PyMuPDF 渲染时 zoom = render_dpi / 72，约定 zoom ≥ 3 即 render_dpi ≥ 216，推荐 300。块 bbox 若以像素计，必须与此 DPI 一致或在块上声明 bbox_dpi。"
+        },
+        "rotation": {
+          "type": "integer",
+          "enum": [
+            0,
+            90,
+            180,
+            270
+          ],
+          "description": "页面旋转角（度，顺时针），与 PyMuPDF page.rotation 一致。bbox 给出的是旋转后视觉页面坐标。"
+        },
+        "media_box": {
+          "$ref": "#/$defs/bbox",
+          "description": "可选，页面 MediaBox，单位与 unit 相同。"
+        },
+        "skew_angle_deg": {
+          "type": "number",
+          "description": "纠偏后的残留倾斜角（度）。坐标系为页面左上原点、y 向下；逆时针为正。已纠偏时目标约为 0。纠偏前倾角只写入 skew_angle_deg_before，不要与 deskew_transform.angle_deg 混淆。"
+        },
+        "width_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "页面宽度（毫米）。大幅面或页尺寸异常的扫描件必须填写，供生成侧按 A4 版心等比缩放。"
+        },
+        "height_mm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "页面高度（毫米）。与 width_mm 一起用于判断是否为非 A4 页并做等比缩放。"
+        },
+        "deskew_applied": {
+          "type": "boolean",
+          "description": "识别侧是否已在渲染后、版面分析/OCR 之前应用纠偏。为 true 时，本页 bbox 已在纠偏后坐标系，生成侧不再次旋转。"
+        },
+        "skew_angle_deg_before": {
+          "type": "number",
+          "description": "纠偏前估计的整页倾斜角（度，逆时针为正，左上原点、y 向下）。deskew_applied=true 时建议填写。这是倾角本身，不是矩阵旋转角。"
+        },
+        "deskew_transform": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "已应用的纠偏变换，便于复现。坐标单位与本页 unit 相同，原点为页左上、y 向下。angle_deg 是矩阵实际旋转角 θ，不是纠偏前倾角。生成侧在 deskew_applied=true 时只记录、不再次应用。",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "rotation",
+                "affine"
+              ],
+              "description": "rotation=绕中心旋转；affine=一般 2×3 仿射。"
+            },
+            "angle_deg": {
+              "type": "number",
+              "description": "矩阵实际旋转角 θ（度）。页面坐标：左上原点，y 向下；逆时针为正。必须与 matrix 一致：将 matrix 视为 [[a,b,tx],[c,d,ty]] 时，atan2(c, a) 与 angle_deg 偏差应 ≤ 0.01°。绕中心旋转的标准形式为 matrix=[[cosθ,-sinθ,tx],[sinθ,cosθ,ty]]。纠偏前倾角只看 skew_angle_deg_before，不要把本字段写成 +α。"
+            },
+            "center": {
+              "type": "array",
+              "minItems": 2,
+              "maxItems": 2,
+              "items": {
+                "type": "number"
+              },
+              "description": "[cx, cy] 旋转中心。缺省为页心。"
+            },
+            "matrix": {
+              "type": "array",
+              "minItems": 6,
+              "maxItems": 6,
+              "items": {
+                "type": "number"
+              },
+              "description": "2×3 仿射矩阵，将纠偏前坐标映射到纠偏后（本页 bbox 所在）坐标。打包为 [a,b,c,d,tx,ty]，对应 [[a,b,tx],[c,d,ty]]，即 x' = a*x + b*y + tx，y' = c*x + d*y + ty。绕中心旋转 θ 时：[[cosθ,-sinθ,tx],[sinθ,cosθ,ty]]，因此 a=d=cosθ，b=-sinθ，c=sinθ。angle_deg 必须等于该矩阵的 θ（atan2(c,a)），允许偏差 0.01°。"
+            }
+          }
+        },
+        "coordinate_space": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "可选。补充说明本页坐标如何从渲染栅格换算而来（unit、render_dpi、pdf_user_space、recognition_scale 等）。块 bbox 仍以本页 unit 与 render_dpi 为准。",
+          "properties": {
+            "unit": {
+              "type": "string"
+            },
+            "origin": {
+              "type": "string"
+            },
+            "y_axis": {
+              "type": "string"
+            },
+            "formula": {
+              "type": "string"
+            },
+            "render_dpi": {
+              "type": "number"
+            },
+            "render_width_px": {
+              "type": "number"
+            },
+            "render_height_px": {
+              "type": "number"
+            },
+            "recognition_scale": {
+              "type": "number"
+            },
+            "pdf_user_space": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              }
+            },
+            "note": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": [
+        "id",
+        "page",
+        "bbox",
+        "type",
+        "reading_order",
+        "verification_status"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "块唯一标识，文档内不可重复。建议 b-页码-序号，如 b-001-003。"
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "所属页码，必须在 pages 中存在。"
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox"
+        },
+        "bbox_unit": {
+          "type": "string",
+          "enum": [
+            "pt",
+            "px"
+          ],
+          "description": "本块 bbox 单位。缺省时使用 coordinate_system.default_unit。"
+        },
+        "bbox_dpi": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "当 bbox_unit 为 px 时必填，表示像素所对应的 DPI（通常等于所在页 render_dpi）。"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "title",
+            "heading",
+            "paragraph",
+            "list",
+            "table",
+            "image",
+            "figure_caption",
+            "table_caption",
+            "seal",
+            "handwriting",
+            "header",
+            "footer",
+            "page_number",
+            "toc",
+            "formula",
+            "signature",
+            "unknown"
+          ],
+          "description": "块类型。title=文题/封面标题；heading=章节标题（须给 level 1-6）；paragraph=正文段落；list=列表；table=表格；image=图片/插图；figure_caption=图题；table_caption=表题；seal=印章；handwriting=手写；header=页眉；footer=页脚；page_number=页码；toc=目录；formula=公式；signature=签名；unknown=无法归类，生成侧将按段落或图片降级处理。"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6,
+          "description": "标题层级，仅 type=heading 时必填。1 为章，2 为节，以此类推。"
+        },
+        "reading_order": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "阅读顺序，全局或按页递增均可，生成侧先按 page 再按 reading_order 排序。页眉/页脚/页码可使用较小值，生成时不会写入正文流。"
+        },
+        "text": {
+          "type": "string",
+          "description": "纯文本内容。图片/印章可为空字符串或 OCR 辅助文本。"
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "ocr",
+            "vlm",
+            "rule",
+            "mixed"
+          ],
+          "description": "来源：ocr=PaddleOCR 等文字识别；vlm=视觉模型；rule=规则/版面后处理；mixed=多种来源融合。"
+        },
+        "verification_status": {
+          "type": "string",
+          "enum": [
+            "unverified",
+            "auto_passed",
+            "needs_review",
+            "human_verified",
+            "rejected"
+          ],
+          "description": "校验状态，必填。unverified=尚未校验（识别侧默认）；auto_passed=自动校验通过；needs_review=需人工复核；human_verified=人工已确认；rejected=已判定为错误，生成侧将跳过该块。"
+        },
+        "needs_review": {
+          "type": "boolean",
+          "description": "本块是否需要人工复核。与 verification_status=needs_review 应对齐。"
+        },
+        "style": {
+          "$ref": "#/$defs/styleHints"
+        },
+        "table": {
+          "$ref": "#/$defs/tableStructure"
+        },
+        "image": {
+          "$ref": "#/$defs/imageRef"
+        },
+        "list": {
+          "$ref": "#/$defs/listStructure"
+        },
+        "warnings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/warning"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "heading"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "level"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "table"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "table"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "enum": [
+                  "image",
+                  "seal"
+                ]
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "image"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "bbox_unit": {
+                "const": "px"
+              }
+            },
+            "required": [
+              "bbox_unit"
+            ]
+          },
+          "then": {
+            "required": [
+              "bbox_dpi"
+            ]
+          }
+        }
+      ]
+    },
+    "styleHints": {
+      "type": "object",
+      "description": "版式提示，全部可选。生成侧在缺少提示时回退到标书质量标准中的默认样式。",
+      "properties": {
+        "font_family": {
+          "type": "string",
+          "description": "字体名，如 宋体、黑体、Times New Roman。"
+        },
+        "font_family_east_asia": {
+          "type": "string"
+        },
+        "font_family_ascii": {
+          "type": "string"
+        },
+        "font_size_pt": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "bold": {
+          "type": "boolean"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "underline": {
+          "type": "boolean"
+        },
+        "alignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right",
+            "justify"
+          ]
+        },
+        "color": {
+          "type": "string",
+          "pattern": "^#?[0-9A-Fa-f]{6}$",
+          "description": "RGB 颜色，如 #000000。"
+        },
+        "line_spacing_pt": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "line_spacing_rule": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "auto",
+            "multiple"
+          ]
+        },
+        "first_line_indent_pt": {
+          "type": "number"
+        },
+        "space_before_pt": {
+          "type": "number",
+          "minimum": 0
+        },
+        "space_after_pt": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "tableStructure": {
+      "type": "object",
+      "required": [
+        "n_rows",
+        "n_cols",
+        "cells"
+      ],
+      "properties": {
+        "n_rows": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "n_cols": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "header_row_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "表头行数，从第 0 行起算。跨页时这些行应重复。默认 1。"
+        },
+        "caption": {
+          "type": "string",
+          "description": "表题文本（若未单独用 table_caption 块）。"
+        },
+        "cells": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/tableCell"
+          },
+          "description": "单元格列表。合并区域只输出左上角锚点单元格，并用 rowspan/colspan 表示占用。被合并覆盖的格子不要再输出。"
+        }
+      }
+    },
+    "tableCell": {
+      "type": "object",
+      "required": [
+        "row",
+        "col",
+        "text"
+      ],
+      "properties": {
+        "row": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "行索引，从 0 开始。"
+        },
+        "col": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "列索引，从 0 开始。"
+        },
+        "rowspan": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "colspan": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1
+        },
+        "bbox": {
+          "$ref": "#/$defs/bbox",
+          "description": "单元格在页面上的 bbox，单位与所属 table 块相同。推荐提供。"
+        },
+        "text": {
+          "type": "string"
+        },
+        "alignment": {
+          "type": "string",
+          "enum": [
+            "left",
+            "center",
+            "right",
+            "justify"
+          ]
+        },
+        "vertical_alignment": {
+          "type": "string",
+          "enum": [
+            "top",
+            "middle",
+            "bottom"
+          ]
+        },
+        "confidence": {
+          "$ref": "#/$defs/confidence"
+        },
+        "bold": {
+          "type": "boolean"
+        }
+      }
+    },
+    "imageRef": {
+      "type": "object",
+      "required": [
+        "asset_id"
+      ],
+      "properties": {
+        "asset_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "指向 assets[].id。"
+        },
+        "crop_bbox": {
+          "$ref": "#/$defs/bbox",
+          "description": "在资源像素坐标系中的裁剪框 [x0,y0,x1,y1]，原点为图像左上角，单位 px。缺省表示使用整张图。"
+        },
+        "caption": {
+          "type": "string"
+        },
+        "alt_text": {
+          "type": "string"
+        },
+        "display_width_pt": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "display_height_pt": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "listStructure": {
+      "type": "object",
+      "required": [
+        "list_type",
+        "items"
+      ],
+      "properties": {
+        "list_type": {
+          "type": "string",
+          "enum": [
+            "ordered",
+            "unordered"
+          ]
+        },
+        "items": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "text"
+            ],
+            "properties": {
+              "text": {
+                "type": "string"
+              },
+              "level": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1
+              },
+              "marker": {
+                "type": "string",
+                "description": "原始项目符号，如 「（1）」或「·」。"
+              },
+              "confidence": {
+                "$ref": "#/$defs/confidence"
+              }
+            }
+          }
+        }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "path",
+        "hash_sha256",
+        "width_px",
+        "height_px",
+        "original_dpi"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "image",
+            "scan",
+            "seal",
+            "drawing",
+            "signature"
+          ],
+          "description": "资源类型。scan 表示扫描件裁块，将参与倾斜角检查；seal 为印章。"
+        },
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "相对路径，相对于本 JSON 文件所在目录。例如 assets/fig-01.png。"
+        },
+        "mime_type": {
+          "type": "string",
+          "description": "如 image/png、image/jpeg。"
+        },
+        "hash_sha256": {
+          "type": "string",
+          "pattern": "^[a-fA-F0-9]{64}$",
+          "description": "文件 SHA-256 十六进制小写或大写均可。"
+        },
+        "width_px": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height_px": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "original_dpi": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "资源固有分辨率 DPI。若来自 300 DPI 渲染裁剪，应填 300。未知时填渲染 DPI 并在 warnings 中说明。"
+        },
+        "crop_bbox": {
+          "$ref": "#/$defs/bbox",
+          "description": "可选，该资源从更大原图裁出时的原图像素框。"
+        },
+        "source_page": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "裁剪来源页码，可选。"
+        }
+      }
+    },
+    "warning": {
+      "type": "object",
+      "required": [
+        "code",
+        "message"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message": {
+          "type": "string",
+          "minLength": 1
+        },
+        "page": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "block_id": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string",
+          "enum": [
+            "阻断",
+            "重要",
+            "提示"
+          ]
+        }
+      }
+    }
+  }
+}

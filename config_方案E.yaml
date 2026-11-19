@@ -1,0 +1,20 @@
+# 方案E：组合定义（只表达开关；不外发，不含任何密钥、不含任何外发批准）
+# 底座 = 方案F1（不加深度求索纠错）；只从已冻结代码里组合，代码一行不改（scripts/f1r2.py 的 Ctx.base / Ctx.run 按下面的开关执行）。
+allow_external: false
+方案E:
+  底座: 方案F1（不加深度求索纠错）
+  # Ctx.run(variant, llm=None)
+  llm: none
+  variant:
+    inv: v3        # 变体二：发票明细与合计行顺序（第三版重排，invoice_reorder_v3）；不写则为第二版
+    hdr: fields    # N1 甲（新变体一甲）：发票表头·固定字段顺序（invoice_header fields）
+    vert: true     # N2（新变体二）：页边竖排·旋转识别放页末（vertical_margin）
+    check: true    # N4（新变体四）：发票数量单价金额核对（invoice_check）
+  # 明确关闭（不出现在 variant 里即为关）
+  off:
+    seal: 变体一乙／一甲（印章混入去红重识，seal_leak）
+    starf: 变体三（星号过滤，star_filter）——关闭后按底座走 star_fill
+    guard: N3（补漏防章，seal_fill_guard）
+    vmark: 页边竖排标记写进正文的对照版
+    llm: 深度求索／gpt-4o 表格纠错
+  6.2: 不用

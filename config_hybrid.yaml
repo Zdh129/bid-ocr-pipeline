@@ -1,0 +1,13 @@
+# 混合路线（B 打底 + OpenAI 视觉模型）默认配置：不外发。
+# 不改生产环境 150 DPI 配置。裁图渲染 200 DPI（测试用）。
+vlm:
+  allow_external: false
+  api_key_env: OPENAI_API_KEY      # 只检查有无，绝不打印
+  table_model: gpt-4o
+  other_model: gpt-5-mini
+  max_side_px: 1600
+  max_retries: 2
+  timeout_sec: 120
+  soft_cap_usd: 5.0
+  hard_cap_usd: 10.0
+  cny_per_usd: 7.2
