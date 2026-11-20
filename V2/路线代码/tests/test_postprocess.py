@@ -50,7 +50,7 @@ def test_star_serial_dot_switch_and_seal_untouched():
 
 # ---------- seal_strip ----------
 def test_seal_strip_position_and_guards():
-    seal = {"id": "s", "type": "seal", "bbox": [100, 100, 200, 200], "text": "贵州博凯科技开发有限公司"}
+    seal = {"id": "s", "type": "seal", "bbox": [100, 100, 200, 200], "text": "测试样本A科技开发有限公司"}
     blocks = [
         seal,
         {"id": "junk", "type": "paragraph", "bbox": [120, 120, 160, 135], "text": "同一"},
@@ -58,7 +58,7 @@ def test_seal_strip_position_and_guards():
         {"id": "num", "type": "paragraph", "bbox": [120, 160, 190, 175], "text": "2.强制对流"},
         {"id": "list", "type": "list", "bbox": [120, 180, 190, 195], "text": "技术"},
         {"id": "far", "type": "paragraph", "bbox": [400, 400, 450, 420], "text": "同一"},
-        {"id": "txt", "type": "paragraph", "bbox": [400, 500, 480, 520], "text": "博凯科技开发"},
+        {"id": "txt", "type": "paragraph", "bbox": [400, 500, 480, 520], "text": "测试样本A科技开发"},
         {"id": "kw", "type": "header", "bbox": [400, 600, 480, 620], "text": "贵州省税务局"},
     ]
     d = _doc(blocks)
@@ -71,7 +71,7 @@ def test_seal_strip_position_and_guards():
     assert n == 3
     pp = pred_pages(d)
     body = "".join(s["text"] for s in pp["1"]["sections"])
-    assert "博凯科技开发" not in body and "型号" in body
+    assert "测试样本A科技开发" not in body and "型号" in body
 
 
 # ---------- textutil / fill_gaps ----------

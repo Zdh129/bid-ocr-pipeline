@@ -2,8 +2,8 @@
 +++ "\345\200\231\351\200\211\350\267\257\347\272\277_\347\254\254\344\270\211\347\211\210_\345\215\232\345\207\257\346\270\205\351\233\266/\345\244\215\350\267\221_\347\254\254\344\270\211\347\211\210.py"	2026-11-20 21:23:15.048320002 +0800
 @@ -1,11 +1,11 @@
 -"""候选路线第二版：一条命令复跑＋计分（离线，只用缓存，0 次百度调用；不改参照、冻结物、生产配置；不 push）。
-+"""候选路线第三版（博凯清零）：在第二版基础上叠加 rules/v3 的通用层。一条命令复跑＋计分（离线，只用缓存，0 次百度调用；不改参照、冻结物、生产配置；不 push）。
- 流程（每个数据集按输入段分别处理，博凯是两段：博凯包、社保重渲）：
++"""候选路线第三版（主测试集清零）：在第二版基础上叠加 rules/v3 的通用层。一条命令复跑＋计分（离线，只用缓存，0 次百度调用；不改参照、冻结物、生产配置；不 push）。
+ 流程（每个数据集按输入段分别处理，测试样本A是两段：测试样本A包、社保重渲）：
    0 安全检查：无网络、无百度环境变量；冻结副本与第3轮冻结规则 sha256 一致；本目录代码与 sha256 清单一致（首次运行时生成）。
    1 底座＝冻结路线原样：路线代码/rules/round5/route5.py（combo 1,4,2，内部调用 round3/frozen_stack3.py，S6 删除门槛 0.4）→ round5_method6/tablerow（gx=0.4, gy=1.6）。
    2 按 配置_第二版.json 叠加：竖排去重 → 印章清理 → 第一层表格按物理行拆分 → [电子章清理] → 第三层字段金额核对（只标记）。
@@ -16,7 +16,7 @@
  from collections import Counter
 @@ -14,7 +14,7 @@
  H = Path(__file__).resolve().parent; ROOT = Path('/workspace/pdf-test/baidu'); O = ROOT / 'output'
- BK = O / '博凯文件_最优路线测试'; TS = O / '盲测_版面约束/版面分析优化计划/试算'; FZD = TS / '第5轮/当前最优_冻结_竖排门槛0.4'
+ BK = O / '测试样本A文件_最优路线测试'; TS = O / '盲测_版面约束/版面分析优化计划/试算'; FZD = TS / '第5轮/当前最优_冻结_竖排门槛0.4'
  FR = BK / '优化_第3轮/留出验证/冻结规则'; R = H / '路线代码/rules'; V2 = R / 'v2'; PY = str(ROOT / '.venv/bin/python')
 -CFG = json.load(open(H / '配置_第二版.json'))
 +CFG = json.load(open(H / '配置_第三版.json')); V2D = O / '候选路线_第二版'; V3 = R / 'v3'
@@ -31,14 +31,14 @@
 +sys.path[:0] = [str(V3), str(V2), str(TS / '第5轮/综合测试_2776d4b'), str(ROOT / 'src'), str(ROOT / 'scripts')]
  import sets_all as SA, synth18b_score as SB, tolerant_score as T
  import layer1, layer3, eseal, page_type, baidu_cache as BC
-+import v3_layers as V3L; sys.path.insert(0, str(O / '博凯_清零/工具')); import 计分 as S3
++import v3_layers as V3L; sys.path.insert(0, str(O / '主测试集清零/工具')); import 计分 as S3
  from dedup import dedup; from seal_rule import clean; from vsets import VS
  # ---------- 数据集与输入段 ----------
  def seg_bk(tag, d, off, keep):
 @@ -45,9 +46,8 @@
      DATA[s] = [dict(tag=s, C=Path(c['C']), sa_o=Path(c['sa_o']), sa_p2=Path(c['sa_p2']), pdf=Path(c['pdf']), name=c['name'], lines=H / '线缓存/synth' / s,
                      doc=Path(c['doc']), rd=Path(c['rd']), rr=Path(c['rr']), vert=VS[s][0], off=0, keep=lambda p: True)]
- REFS = {'博凯': BK / '博凯包/参照', '江苏': BK / '优化_第3轮/留出验证/江苏凭证/参照', **{s: Path(c['ref']) for s, c in SA.SETS.items()}}
+ REFS = {'测试样本A': BK / '测试样本A包/参照', '江苏': BK / '优化_第3轮/留出验证/江苏凭证/参照', **{s: Path(c['ref']) for s, c in SA.SETS.items()}}
 -def ref8(s):   # 当前最优 ⑧ 的正文（对照用）
 -    if s == '江苏': return json.load(open(JS / '预测/预测_全部.json'))['整合版（冻结＋印章清理＋去重＋拆行）']
 -    return json.load(open(BK / '优化_第3轮/消融/预测' / f'{s}_各组.json'))['⑧三项全加']
@@ -66,7 +66,7 @@
              '严_逐页': {str(p): E(st['per_page'][p]['overall']) for p in pages}, '页类型': {str(p): mp[p]['doc_type'] for p in pages}}
  body = lambda pr: {p: ([(x['section'], x['text']) for x in v['sections']], v.get('seal') or '') for p, v in pr.items()}
  # ---------- 主流程 ----------
- ONLY = sys.argv[1:] or ['博凯'] + list(SA.SETS) + ['江苏']
+ ONLY = sys.argv[1:] or ['测试样本A'] + list(SA.SETS) + ['江苏']
 -VARS = {'按配置': CFG, ('电子章清理开' if not CFG['电子章清理'] else '电子章清理关'): {**CFG, '电子章清理': not CFG['电子章清理']}}
 +VARS = {'按配置': CFG}
  for d in ('中间', '预测', '元数据', '成绩', '日志'): (H / d).mkdir(exist_ok=True)

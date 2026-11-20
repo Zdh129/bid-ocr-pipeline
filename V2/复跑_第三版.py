@@ -1,5 +1,5 @@
-"""候选路线第三版（博凯清零）：在第二版基础上叠加 rules/v3 的通用层。一条命令复跑＋计分（离线，只用缓存，0 次百度调用；不改参照、冻结物、生产配置；不 push）。
-流程（每个数据集按输入段分别处理，博凯是两段：博凯包、社保重渲）：
+"""候选路线第三版（主测试集清零）：在第二版基础上叠加 rules/v3 的通用层。一条命令复跑＋计分（离线，只用缓存，0 次百度调用；不改参照、冻结物、生产配置；不 push）。
+流程（每个数据集按输入段分别处理，测试样本A是两段：测试样本A包、社保重渲）：
   0 安全检查：无网络、无百度环境变量；冻结副本与第3轮冻结规则 sha256 一致；本目录代码与 sha256 清单一致（首次运行时生成）。
   1 底座＝冻结路线原样：路线代码/rules/round5/route5.py（combo 1,4,2，内部调用 round3/frozen_stack3.py，S6 删除门槛 0.4）→ round5_method6/tablerow（gx=0.4, gy=1.6）。
   2 按 配置_第二版.json 叠加：竖排去重 → 印章清理 → 第一层表格按物理行拆分 → [电子章清理] → 第三层字段金额核对（只标记）。
@@ -12,8 +12,11 @@ from collections import Counter
 from pathlib import Path
 sys.dont_write_bytecode = True
 H = Path(__file__).resolve().parent; ROOT = Path('/workspace/pdf-test/baidu'); O = ROOT / 'output'
-BK = O / '博凯文件_最优路线测试'; TS = O / '盲测_版面约束/版面分析优化计划/试算'; FZD = TS / '第5轮/当前最优_冻结_竖排门槛0.4'
-FR = BK / '优化_第3轮/留出验证/冻结规则'; R = H / '路线代码/rules'; V2 = R / 'v2'; PY = str(ROOT / '.venv/bin/python')
+R = H / '路线代码/rules'; V2 = R / 'v2'; PY = str(ROOT / '.venv/bin/python')
+sys.path.insert(0, str(V2))
+from vsets import BK, BK_PACK, BK_SOCIAL, TOOLS, TS, VS
+FZD = TS / '第5轮/当前最优_冻结_竖排门槛0.4'
+FR = BK / '优化_第3轮/留出验证/冻结规则'
 CFG = json.load(open(H / '配置_第三版.json')); V2D = O / '候选路线_第二版'; V3 = R / 'v3'
 # ---------- 0 安全检查 ----------
 assert not [k for k in os.environ if 'BAIDU' in k.upper()], '环境里还有百度变量'
@@ -29,25 +32,47 @@ for f in ('layer1.py', 'layer3.py'):
 sys.path[:0] = [str(V3), str(V2), str(TS / '第5轮/综合测试_2776d4b'), str(ROOT / 'src'), str(ROOT / 'scripts')]
 import sets_all as SA, synth18b_score as SB, tolerant_score as T
 import layer1, layer3, eseal, page_type, baidu_cache as BC
-import v3_layers as V3L; sys.path.insert(0, str(O / '博凯_清零/工具')); import 计分 as S3
-from dedup import dedup; from seal_rule import clean; from vsets import VS
+import v3_layers as V3L; sys.path.insert(0, str(TOOLS / '工具')); import 计分 as S3
+from dedup import dedup; from seal_rule import clean
 # ---------- 数据集与输入段 ----------
+def _line_cache(tag):
+    pref = H / '线缓存' / tag
+    if pref.exists():
+        return pref
+    root = H / '线缓存'
+    if tag == '测试样本A包' and root.is_dir():
+        skip = {'江苏', 'synth', '社保重渲'}
+        hits = [p for p in sorted(root.iterdir()) if p.is_dir() and p.name not in skip and not p.name.startswith('synth')]
+        if len(hits) == 1:
+            return hits[0]
+    return pref
 def seg_bk(tag, d, off, keep):
     W = d / '运行'; WO, WP = W / 'orig/work', W / 'P2/work'
     return dict(tag=tag, C=d / '预测/bk_C.json', sa_o=WO / 'output/scheme_a', sa_p2=WP / 'output/scheme_a', pdf=d / '输入/bk-scan.pdf', name='bk',
-                lines=H / '线缓存' / tag, doc=WO / 'output/final/scheme_b_standard/blind20-scan.json', rd=WO / 'output/scheme_a/renders',
+                lines=_line_cache(tag), doc=WO / 'output/final/scheme_b_standard/blind20-scan.json', rd=WO / 'output/scheme_a/renders',
                 rr=W / 'reread/A_P2/results.json', vert=W / 'bk/vertical/results.json', off=off, keep=keep)
 JS = BK / '优化_第4轮/江苏留出'
-DATA = {'博凯': [seg_bk('博凯包', BK / '博凯包', 0, lambda p: not 8 <= p <= 14), seg_bk('社保重渲', BK / '博凯包_社保重渲', 7, lambda p: p <= 7)],
+DATA = {'测试样本A': [seg_bk('测试样本A包', BK_PACK, 0, lambda p: not 8 <= p <= 14), seg_bk('社保重渲', BK_SOCIAL, 7, lambda p: p <= 7)],
         '江苏': [dict(tag='江苏', C=JS / '预测/js_C.json', sa_o=JS / '运行/orig/work/output/scheme_a', sa_p2=JS / '运行/P2/work/output/scheme_a', pdf=JS / '输入/bk-scan.pdf',
                      name='bk', lines=H / '线缓存/江苏', doc=JS / '运行/orig/work/output/final/scheme_b_standard/blind20-scan.json', rd=JS / '运行/orig/work/output/scheme_a/renders',
                      rr=JS / '运行/reread/A_P2/results.json', vert=JS / '运行/bk/vertical/results.json', off=0, keep=lambda p: True)]}
 for s, c in SA.SETS.items():
     DATA[s] = [dict(tag=s, C=Path(c['C']), sa_o=Path(c['sa_o']), sa_p2=Path(c['sa_p2']), pdf=Path(c['pdf']), name=c['name'], lines=H / '线缓存/synth' / s,
                     doc=Path(c['doc']), rd=Path(c['rd']), rr=Path(c['rr']), vert=VS[s][0], off=0, keep=lambda p: True)]
-REFS = {'博凯': BK / '博凯包/参照', '江苏': BK / '优化_第3轮/留出验证/江苏凭证/参照', **{s: Path(c['ref']) for s, c in SA.SETS.items()}}
+REFS = {'测试样本A': BK_PACK / '参照', '江苏': BK / '优化_第3轮/留出验证/江苏凭证/参照', **{s: Path(c['ref']) for s, c in SA.SETS.items()}}
+def _pred_path(folder, name):
+    p = Path(folder) / f'{name}.json'
+    if p.exists():
+        return p
+    if name == '测试样本A':
+        known = set(DATA)
+        cands = [f for f in Path(folder).glob('*.json')
+                 if f.stem not in known and '_电子章' not in f.stem and not f.stem.startswith('synth')]
+        if len(cands) == 1:
+            return cands[0]
+    return p
 def ref8(s):   # 对照：候选路线第二版的预测（只读）
-    return {p: {k: v for k, v in pg.items() if k != 'meta'} for p, pg in json.load(open(V2D / '预测' / f'{s}.json')).items()}
+    return {p: {k: v for k, v in pg.items() if k != 'meta'} for p, pg in json.load(open(_pred_path(V2D / '预测', s))).items()}
 # ---------- 1 底座：冻结路线原样 ----------
 ENV = {k: v for k, v in os.environ.items() if 'BAIDU' not in k.upper()}
 ENV.update(PYTHONDONTWRITEBYTECODE='1', R5_MODS=str(R / 'round5'), R5_STACK3=str(R / 'round3' / 'frozen_stack3.py'))
@@ -131,7 +156,7 @@ def score(rd, pr):
             '严_逐页': {str(p): E(st['per_page'][p]['overall']) for p in pages}, '页类型': {str(p): mp[p]['doc_type'] for p in pages}}
 body = lambda pr: {p: ([(x['section'], x['text']) for x in v['sections']], v.get('seal') or '') for p, v in pr.items()}
 # ---------- 主流程 ----------
-ONLY = sys.argv[1:] or ['博凯'] + list(SA.SETS) + ['江苏']
+ONLY = sys.argv[1:] or ['测试样本A'] + list(SA.SETS) + ['江苏']
 VARS = {'按配置': CFG}
 for d in ('中间', '预测', '元数据', '成绩', '日志'): (H / d).mkdir(exist_ok=True)
 summary = json.load(open(H / '汇总.json')) if (H / '汇总.json').exists() else {}
