@@ -1,0 +1,76 @@
+{
+  "log_id": 10001,
+  "words_result_num": 5,
+  "words_result": [
+    {
+      "words": "某某市政务云扩容项目招标文件",
+      "location": {
+        "left": 200,
+        "top": 80,
+        "width": 800,
+        "height": 40
+      },
+      "probability": {
+        "average": 0.99,
+        "variance": 0.0,
+        "min": 0.99
+      }
+    },
+    {
+      "words": "招标编号：ZB-2026-001",
+      "location": {
+        "left": 200,
+        "top": 140,
+        "width": 500,
+        "height": 28
+      },
+      "probability": {
+        "average": 0.98,
+        "variance": 0.0,
+        "min": 0.98
+      }
+    },
+    {
+      "words": "招标日期：2026年11月17日",
+      "location": {
+        "left": 200,
+        "top": 180,
+        "width": 500,
+        "height": 28
+      },
+      "probability": {
+        "average": 0.97,
+        "variance": 0.0,
+        "min": 0.97
+      }
+    },
+    {
+      "words": "招标人：某某市大数据管理局",
+      "location": {
+        "left": 200,
+        "top": 220,
+        "width": 560,
+        "height": 28
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.96
+      }
+    },
+    {
+      "words": "统一社会信用代码：91310000MA0000001X",
+      "location": {
+        "left": 200,
+        "top": 260,
+        "width": 700,
+        "height": 28
+      },
+      "probability": {
+        "average": 0.95,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    }
+  ]
+}

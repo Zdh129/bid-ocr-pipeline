@@ -1,0 +1,15 @@
+# gpt-6.2-astra 视觉复核配置模板（只用于 scripts/astra_run.py）。
+# 已去敏：allow_external 固定为 false。本文件不是外发授权。
+# 默认 config.yaml 的 allow_external 仍为 false。
+vlm:
+  allow_external: false
+  api_key_env: OPENAI_API_KEY
+  model: gpt-6.2-astra
+  detail: high
+  reasoning_effort: low
+  max_completion_tokens: 2000
+  hard_cap_usd: 5.0
+  batch_timeout_min: 10
+  timeout_sec: 180
+  max_retries: 2
+  cny_per_usd: 7.2

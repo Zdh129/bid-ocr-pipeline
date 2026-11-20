@@ -1,0 +1,12 @@
+# 混合路线外发配置模板。已去敏：allow_external 固定为 false。本文件不是外发授权。
+vlm:
+  allow_external: false
+  api_key_env: OPENAI_API_KEY
+  table_model: gpt-4o
+  other_model: gpt-5-mini
+  max_side_px: 1600
+  max_retries: 2
+  timeout_sec: 120
+  soft_cap_usd: 2.0
+  hard_cap_usd: 2.0
+  cny_per_usd: 7.2

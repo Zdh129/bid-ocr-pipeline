@@ -1,0 +1,136 @@
+# 百度 OCR 复测隔离配置（工作副本，已去敏）。默认不允许外发。
+# 不要修改生产环境的 150 DPI 默认配置；本测试流水线渲染默认为 200 DPI。
+# 只有在专用配置里把 allow_external 改为 true、并且命令行同时传入 --allow-external 时才会发请求。
+# 冻结快照中的原始 config.yaml 在 rules/baseline_c/基线C_方案E/config.yaml，用于 sha256 核对，请保持只读。
+
+project_root: .
+allow_external: false
+
+render:
+  dpi: 200
+  zoom: null          # 为空则按 dpi/72 计算（200/72 ≈ 2.777）
+  image_format: png
+  output_subdir: pages
+
+text_layer:
+  enabled: true       # 方案 A：有可用文字层则直接取文字层，不做识别
+  min_chars: 30
+  max_garbled_ratio: 0.05
+  min_script_ratio: 0.5
+  hidden_image_cover: 0.5
+  hidden_max_font_pt: 3.0
+
+route:
+  # 正文页 -> general（标准含位置）；表格/带章页 -> accurate（高精度含位置）
+  body_api: general
+  table_or_seal_api: accurate
+  find_tables: true
+  min_tables: 1
+  seal_red_ratio_min: 0.0015
+  seal_min_component_px: 400
+  seal_min_component_ratio: 0.0004
+  line_density_min: 0.012
+  line_min_length_ratio: 0.25
+
+coverage:
+  iou_threshold: 0.3
+  max_retries: 1
+  use_projection_lines: true
+  projection_min_height_px: 8
+  projection_min_width_ratio: 0.08
+
+docparser:
+  edition: standard
+  poll_interval_sec: 7
+  poll_timeout_sec: 300
+  detect_seal: true
+  recognize_seal: true
+  # 含证件等信息的页是否随整份 PDF 提交。复测如需本地拦截请改为 true。
+  drop_pii_pages: false
+
+auth:
+  api_key_env: BAIDU_OCR_API_KEY
+  secret_key_env: BAIDU_OCR_SECRET_KEY
+  token_url: https://aip.baidubce.com/oauth/2.0/token
+  timeout_sec: 30
+
+cost:
+  currency: CNY
+  cny_per_usd: 7.2
+  soft_cap_usd: 5.0
+  hard_cap_usd: 10.0
+  prices_cny:
+    general: 0.0100
+    accurate: 0.040
+    docparser_standard: 0.05
+    docparser_unlimited: 0.02
+
+pii:
+  enabled: false  # 需要拦截证件页时改为 true。命中则整页只在本地处理。
+  known_pages: data/pii_known_pages.json
+  blocklist_sha256: []
+  blocklist_filenames: []
+
+score:
+  normalize: nfkc_strip_ws_keep_punct
+  exclude_uncertain_token: "【?】"
+  readout_threshold: 0.99
+  cer_threshold: 0.01
+  type_split: [body, table, seal]
+
+frozen20:
+  dir: data/frozen20
+  ocr_input: blind20-scan.pdf
+  reference_file: CHATGPT-REFERENCE-BLIND20-NEW.txt
+  do_not_send:
+    - blind20-textlayer.pdf
+    - CHATGPT-REFERENCE-BLIND20-NEW.txt
+    - manifest.json
+    - manifest.md
+  files:
+    blind20-scan.pdf: 40fdaa2e4a49481365627d00f1105d25c3c4d47dfe2da147dbf45072fa34c9b5
+    blind20-textlayer.pdf: 720d284168e99666e11c1de26c7aad30d88ad4b826af1c6994187a106a56bd43
+    CHATGPT-REFERENCE-BLIND20-NEW.txt: 8946a6d2a36f7de8166f74d9542e370760e0734b03b316a6a2f416105df0bcda
+    manifest.json: dc495bac9d6b7e8036271bbf7a65f238a2de9d9535d0e3dc5a700f5f57d24faa
+    manifest.md: d0ad68324701c4f9c1eda7b5f7e888f7e317fb39481fde53d6dd568d78d5cb0e
+
+paths:
+  output_dir: output
+  schema_path: schemas/intermediate.schema.json
+  samples_dir: data/samples
+  constructed_sample: data/fixtures/sample_tender.pdf
+
+dry_run:
+  # 放入本地样本后，在此填写相对路径。仓库不附带这些 PDF。
+  pages: []
+
+# B 标准版输出的后处理（纯本地、不联网），入口 baidu_ocr.postprocess.run_postprocess。
+# 注意：这些基础后处理规则是在开发集上调出来的，不是盲测结论。
+# 当前最优路线在此之上叠加方案E / 第1轮 / 第2轮冻结规则，见 README。
+postprocess:
+  enabled: true
+  star:
+    enabled: true
+    serial_dot: true
+  seal_strip:
+    enabled: true
+    use_position: true
+    use_text: true
+    overlap_min: 0.6
+    max_chars: 12
+    block_types: [paragraph, header]
+  fill_gaps:
+    enabled: true
+    max_len: 2
+    min_sim: 0.6
+    a_pad_x: 10.0
+  invoice_reorder:
+    enabled: true
+  vlm_backfill:
+    enabled: false
+    missing_line: true
+    handwritten_date: true
+    agree_guard: true
+    dedup_guard: true
+    dedup_gap_pt: 100.0
+    margin_vertical_last: true

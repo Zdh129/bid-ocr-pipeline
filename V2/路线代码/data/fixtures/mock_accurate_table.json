@@ -1,0 +1,272 @@
+{
+  "log_id": 20001,
+  "words_result_num": 19,
+  "words_result": [
+    {
+      "words": "报价一览表",
+      "location": {
+        "left": 150,
+        "top": 120,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "序号",
+      "location": {
+        "left": 150,
+        "top": 200,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "项目名称",
+      "location": {
+        "left": 330,
+        "top": 200,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "单位",
+      "location": {
+        "left": 510,
+        "top": 200,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "数量",
+      "location": {
+        "left": 690,
+        "top": 200,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "单价（元）",
+      "location": {
+        "left": 870,
+        "top": 200,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "合计（元）",
+      "location": {
+        "left": 1050,
+        "top": 200,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "1",
+      "location": {
+        "left": 150,
+        "top": 240,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "云服务器",
+      "location": {
+        "left": 330,
+        "top": 240,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "台",
+      "location": {
+        "left": 510,
+        "top": 240,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "10",
+      "location": {
+        "left": 690,
+        "top": 240,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "80000.00",
+      "location": {
+        "left": 870,
+        "top": 240,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "800000.00",
+      "location": {
+        "left": 1050,
+        "top": 240,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "2",
+      "location": {
+        "left": 150,
+        "top": 280,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "存储阵列",
+      "location": {
+        "left": 330,
+        "top": 280,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "套",
+      "location": {
+        "left": 510,
+        "top": 280,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "2",
+      "location": {
+        "left": 690,
+        "top": 280,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "150000.00",
+      "location": {
+        "left": 870,
+        "top": 280,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    },
+    {
+      "words": "300000.00",
+      "location": {
+        "left": 1050,
+        "top": 280,
+        "width": 170,
+        "height": 32
+      },
+      "probability": {
+        "average": 0.96,
+        "variance": 0.0,
+        "min": 0.95
+      }
+    }
+  ]
+}

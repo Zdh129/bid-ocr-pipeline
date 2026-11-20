@@ -1,0 +1,151 @@
+# 百度 OCR 复测隔离配置。默认不允许外发。
+# 禁止修改 /workspace/pdf-test/ocr/config.yaml（线上默认配置）。
+# 只有用户本人书面批准外发、并显式把 allow_external 改为 true 后，才能发请求。
+
+project_root: /workspace/pdf-test/baidu
+allow_external: false
+
+render:
+  dpi: 200
+  zoom: null          # 为空则按 dpi/72 计算（200/72 ≈ 2.777）
+  image_format: png
+  output_subdir: pages
+
+text_layer:
+  enabled: true       # 方案 A：有可用文字层则直接取文字层，不做识别
+  min_chars: 30
+  max_garbled_ratio: 0.05
+  min_script_ratio: 0.5
+  hidden_image_cover: 0.5
+  hidden_max_font_pt: 3.0
+
+route:
+  # 正文页 -> general（标准含位置）；表格/带章页 -> accurate（高精度含位置）
+  body_api: general
+  table_or_seal_api: accurate
+  find_tables: true
+  min_tables: 1
+  # 红色印章像素检测（HSV，OpenCV/等效尺度 0-179, 0-255, 0-255 的 H 已换算为 0-1/0-1/0-1 的 PIL-HSV 需再换）
+  seal_red_ratio_min: 0.0015
+  seal_min_component_px: 400
+  seal_min_component_ratio: 0.0004
+  # 线条密度：长横线/竖线像素占页面比例，超过则视为表格页
+  line_density_min: 0.012
+  line_min_length_ratio: 0.25
+  # 优先级：seal 或 table 任一命中即走 accurate；原因全部记录
+
+coverage:
+  iou_threshold: 0.3
+  max_retries: 1
+  # 本地行框：优先文字层行框；扫描页用水平投影检测
+  use_projection_lines: true
+  projection_min_height_px: 8
+  projection_min_width_ratio: 0.08
+
+docparser:
+  # standard = 文档解析（标准版）；unlimited = 文档解析（Unlimited-OCR）
+  edition: standard
+  poll_interval_sec: 7
+  poll_timeout_sec: 300
+  detect_seal: true
+  recognize_seal: true
+  # 含 PII 的页不随整份 PDF 提交；可先在本地剔除后再提交其余页
+  drop_pii_pages: false  # 2026-11-18 donghao 本人批准：证件页也发百度
+
+auth:
+  api_key_env: BAIDU_OCR_API_KEY
+  secret_key_env: BAIDU_OCR_SECRET_KEY
+  token_url: https://aip.baidubce.com/oauth/2.0/token
+  timeout_sec: 30
+
+cost:
+  # 官方单价为人民币。USD 用估算汇率，非正式牌价。
+  currency: CNY
+  cny_per_usd: 7.2
+  soft_cap_usd: 5.0
+  hard_cap_usd: 10.0
+  # 按量后付费第一档（成功调用才计费）。不默认扣减免费额度，以免低估。
+  # 文档见 docs/baidu_api.md；促销价可能变动。
+  prices_cny:
+    general: 0.0100          # 标准含位置版，0–5 万次档，元/次
+    accurate: 0.040          # 高精度含位置版，0–5 万次档，元/次
+    docparser_standard: 0.05 # 文档解析标准版限时价，原价 0.09，元/页
+    docparser_unlimited: 0.02 # Unlimited-OCR 限时价，原价 0.05，元/页
+
+pii:
+  enabled: false  # 2026-11-18 donghao 本人批准：身份证等证件页也发百度，去掉本地拦截
+  # 命中则整页只在本地处理，禁止外发。记录仅含文件名+页码+原因。
+  known_pages: data/pii_known_pages.json
+  blocklist_sha256: []
+  blocklist_filenames:
+    - 90ebc9d4a9a2b6bad8568bbaddc414903a9abaaa0a65fe7db7e4a22d39cd7763.png
+
+score:
+  # 参照必须是 ChatGPT 网页版识别结果。不得用文字层或其他输出冒充。
+  normalize: nfkc_strip_ws_keep_punct
+  exclude_uncertain_token: "【?】"
+  readout_threshold: 0.99
+  cer_threshold: 0.01
+  type_split: [body, table, seal]
+
+frozen20:
+  dir: /workspace/pdf-test/frozen20
+  # 2026-11-18 新冻结集 blind20（不是旧的 da93f43f…b583）。逐文件完整 SHA256 校验。
+  ocr_input: blind20-scan.pdf            # 只有这一份允许外发给百度
+  reference_file: CHATGPT-REFERENCE-BLIND20-NEW.txt
+  do_not_send:
+    - blind20-textlayer.pdf
+    - CHATGPT-REFERENCE-BLIND20-NEW.txt
+    - manifest.json
+    - manifest.md
+  files:
+    blind20-scan.pdf: 40fdaa2e4a49481365627d00f1105d25c3c4d47dfe2da147dbf45072fa34c9b5
+    blind20-textlayer.pdf: 720d284168e99666e11c1de26c7aad30d88ad4b826af1c6994187a106a56bd43
+    CHATGPT-REFERENCE-BLIND20-NEW.txt: 8946a6d2a36f7de8166f74d9542e370760e0734b03b316a6a2f416105df0bcda
+    manifest.json: dc495bac9d6b7e8036271bbf7a65f238a2de9d9535d0e3dc5a700f5f57d24faa
+    manifest.md: d0ad68324701c4f9c1eda7b5f7e888f7e317fb39481fde53d6dd568d78d5cb0e
+
+paths:
+  output_dir: output
+  schema_path: schemas/intermediate.schema.json
+  samples_dir: /workspace/pdf-test/samples
+  constructed_sample: /workspace/pdf-test/ocr/data/sample/sample_tender.pdf
+
+dry_run:
+  # 只用这些页做渲染/分流/PII；不发请求。构造样本可做模拟解析与计分。
+  pages:
+    - {pdf: /workspace/pdf-test/ocr/data/sample/sample_tender.pdf, pages: [1, 2, 3], label: constructed}
+    - {pdf: /workspace/pdf-test/samples/0cd9150d8db0c8c8d49362069935ce53c6bb24b94b5539129f545fe78f2bf681.pdf, pages: [2, 17], label: hard}
+    - {pdf: /workspace/pdf-test/samples/b7aeaca205b9809d189d1827a76bb5d0eb136188aeceadae2a77614e07ebfd18.pdf, pages: [20], label: hard}
+    - {pdf: /workspace/pdf-test/samples/3d7c31d236b98fa0d7946fabfc54643d3c6bfc78813ad27439fc81c3ec55be39.pdf, pages: [12], label: hard}
+
+# B 标准版输出的后处理（纯本地、不联网），入口 baidu_ocr.postprocess.run_postprocess。
+# 顺序固定：star → seal_strip → fill_gaps → invoice_reorder → vlm_backfill；每步可单独关（vlm_backfill 默认关、不外发）。
+# 注意：这些规则是在 blind20 这 20 页上调出来的，不是盲测结论。
+postprocess:
+  enabled: true
+  star:              # ★/☆ 与序号点
+    enabled: true
+    serial_dot: true # R3：行首 1–2 位序号后的「。」→「.」
+  seal_strip:        # 剔除印章区域混进正文的文字（块标 rejected，不删）
+    enabled: true
+    use_position: true
+    use_text: true
+    overlap_min: 0.6
+    max_chars: 12
+    block_types: [paragraph, header]
+  fill_gaps:         # A（高精度含位置）+ Unlimited（去二维码幻觉）在同一区域一致时补 B 漏字
+    enabled: true
+    max_len: 2       # 每处最多补 2 字
+    min_sim: 0.6
+    a_pad_x: 10.0
+  invoice_reorder:   # 发票明细区按坐标重排（需要 A 的字框）
+    enabled: true
+  vlm_backfill:      # VLM 回填（默认关闭；本步骤只读取已落盘的视觉模型结果，不外发；外发须专用配置且 allow_external: true）
+    enabled: false
+    missing_line: true      # 场景 a：B 漏读行补漏（路线 2 漏行区域）
+    handwritten_date: true  # 场景 b：手写日期复核（规则见 vlm_backfill.RULE_TEXT，不看参照）
+    agree_guard: true       # 漏行一致性护栏：与 A 行无共同字、或 A/B 都空的缺口只出 1 个字 → 不采用
+    dedup_guard: true       # 去重护栏：6.2 文字已在附近 B 块里（横向重叠、竖向间隔 ≤ dedup_gap_pt）→ 不插入
+    dedup_gap_pt: 100.0
+    margin_vertical_last: true  # 页边竖排小字（高≥3×宽、中心在左右 15% 边距）插到本页正文最后

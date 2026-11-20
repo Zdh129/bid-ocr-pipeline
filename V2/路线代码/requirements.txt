@@ -1,0 +1,10 @@
+# 根据仓库内脚本与 src 的实际 import 列出（锁定到现有测试环境可用的下限）。
+pymupdf>=1.24
+pillow
+numpy
+pyyaml
+requests
+jsonschema
+pytest
+opencv-python-headless>=4.8
+tiktoken

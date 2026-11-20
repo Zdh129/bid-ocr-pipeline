@@ -1,0 +1,15 @@
+# 扩展官方默认规则。下列路径只存放源代码/规则文件的 sha256 校验清单，
+# 不是密钥。已人工核对：命中值等于对应源文件的 sha256。
+title = "pdf-ocr-pipeline"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "冻结清单里的源文件 sha256，不是 API key"
+paths = [
+  '''(^|/)frozen_[^/]+\.json$''',
+  '''(^|/)冻结记录.*$''',
+  '''(^|/).+_sha256\.txt$''',
+  '''(^|/)预先声明_sha256\.txt$''',
+]

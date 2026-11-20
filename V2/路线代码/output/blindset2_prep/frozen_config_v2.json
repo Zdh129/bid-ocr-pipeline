@@ -1,0 +1,328 @@
+{
+ "name": "bestconfig_v2（新最优解）",
+ "frozen_at_utc": "2026-11-18T06:59:59Z",
+ "frozen_at_note": "伦敦时间（UTC+0）与 UTC 相同",
+ "git": "/workspace/pdf-test/baidu 不是 git 仓库 → 用逐文件 sha256 清单冻结",
+ "tuned_on": "blind20（frozen20/blind20-scan.pdf）；所有规则在这 20 页上调出，不是盲测",
+ "blind20_scores_corrected_ref": {
+  "B_baseline": [
+   98.69,
+   1.67
+  ],
+  "v1_bestconfig": [
+   99.57,
+   0.61
+  ],
+  "v2": [
+   99.75,
+   0.43
+  ],
+  "v2_without_two_posthoc_rules": [
+   99.58,
+   0.85
+  ],
+  "unit": "读出率% / CER%"
+ },
+ "pipeline": {
+  "main_ocr": "百度 文档解析标准版（B）原始返回 → 中间 JSON（schema 1.0.0）",
+  "order": [
+   "star",
+   "seal_strip",
+   "fill_gaps",
+   "invoice_reorder",
+   "vlm_backfill"
+  ],
+  "postprocess_default_config_yaml": {
+   "enabled": true,
+   "star": {
+    "enabled": true,
+    "serial_dot": true
+   },
+   "seal_strip": {
+    "enabled": true,
+    "use_position": true,
+    "use_text": true,
+    "overlap_min": 0.6,
+    "max_chars": 12,
+    "block_types": [
+     "paragraph",
+     "header"
+    ]
+   },
+   "fill_gaps": {
+    "enabled": true,
+    "max_len": 2,
+    "min_sim": 0.6,
+    "a_pad_x": 10.0
+   },
+   "invoice_reorder": {
+    "enabled": true
+   },
+   "vlm_backfill": {
+    "enabled": false,
+    "missing_line": true,
+    "handwritten_date": true,
+    "agree_guard": true,
+    "dedup_guard": true,
+    "dedup_gap_pt": 100.0,
+    "margin_vertical_last": true
+   }
+  },
+  "default_off_in_config_yaml": {
+   "allow_external": false,
+   "vlm_backfill.enabled": false
+  },
+  "aux_inputs": "A = 通用文字识别（高精度含位置版，原走法：每页主调 + 补识）；U = 文档解析 Unlimited-OCR（剔除二维码幻觉块）"
+ },
+ "variants": {
+  "v1": {
+   "desc": "当前最优解（四步，无 6.2）",
+   "postprocess_overrides": {
+    "vlm_backfill": {
+     "enabled": false
+    }
+   }
+  },
+  "v2": {
+   "desc": "新最优解：v1 + 6.2 (a) 漏读行补漏 + (b) 手写日期复核，三条漏行规则全开",
+   "postprocess_overrides": {
+    "vlm_backfill": {
+     "enabled": true,
+     "missing_line": true,
+     "handwritten_date": true,
+     "agree_guard": true,
+     "dedup_guard": true,
+     "dedup_gap_pt": 100.0,
+     "margin_vertical_last": true
+    }
+   }
+  },
+  "v2_no_posthoc_rules": {
+   "desc": "「不加两条护栏」：去掉看过 blind20 参照 diff 后才加的去重护栏和页边竖排放页尾，只保留开跑前就有的一致性护栏（= 第一版 v2，blind20 上 99.58%/0.85%）",
+   "postprocess_overrides": {
+    "vlm_backfill": {
+     "enabled": true,
+     "missing_line": true,
+     "handwritten_date": true,
+     "agree_guard": true,
+     "dedup_guard": false,
+     "dedup_gap_pt": 100.0,
+     "margin_vertical_last": false
+    }
+   }
+  },
+  "v2_a_only": {
+   "desc": "只用 (a)",
+   "postprocess_overrides": {
+    "vlm_backfill": {
+     "enabled": true,
+     "missing_line": true,
+     "handwritten_date": false,
+     "agree_guard": true,
+     "dedup_guard": true,
+     "dedup_gap_pt": 100.0,
+     "margin_vertical_last": true
+    }
+   }
+  },
+  "v2_b_only": {
+   "desc": "只用 (b)",
+   "postprocess_overrides": {
+    "vlm_backfill": {
+     "enabled": true,
+     "missing_line": false,
+     "handwritten_date": true,
+     "agree_guard": true,
+     "dedup_guard": true,
+     "dedup_gap_pt": 100.0,
+     "margin_vertical_last": true
+    }
+   }
+  },
+  "v2_no_guards": {
+   "desc": "参考：三条漏行规则全关（只要 6.2 输出非空就按 y 插入）",
+   "postprocess_overrides": {
+    "vlm_backfill": {
+     "enabled": true,
+     "missing_line": true,
+     "handwritten_date": true,
+     "agree_guard": false,
+     "dedup_guard": false,
+     "dedup_gap_pt": 100.0,
+     "margin_vertical_last": false
+    }
+   }
+  },
+  "primary_for_new_set": "新集上 v2 与 v2_no_posthoc_rules 都要报；判断泛化以 v2_no_posthoc_rules 为准，v2 的额外收益只作参考"
+ },
+ "region_rules": {
+  "missing_line": "hybrid/rules.select_route2 的 missing_line（A 有行而 B 无块覆盖的 A 行；A/B 都未覆盖、且不在印章区内的空白缺口），RULES 见下",
+  "handwritten_date": "手写日期块 = B 文字块整块匹配 ^(签订)?日期:?\\d{2,4}年\\d{1,2}月\\d{1,2}日$（NFKC、去空白后），且同页 B 原始版面含 hand_sign（手写签名）块。",
+  "hybrid_rules": {
+   "version": "hybrid-rules-v1 (2026-11-18)",
+   "render_dpi": 200,
+   "table_raw_types": [
+    "table"
+   ],
+   "seal_merge_iou": 0.3,
+   "lowconf_raw_types": [
+    "text",
+    "title",
+    "head_tail"
+   ],
+   "lowconf_score_lt": 0.95,
+   "lowconf_eval_thresholds": [
+    0.75,
+    0.85,
+    0.95
+   ],
+   "unscored_is_lowconf": true,
+   "skip_raw_types": [
+    "hand_sign"
+   ],
+   "invoice_page_keywords": [
+    "发票号码",
+    "电子发票"
+   ],
+   "invoice_noframe_start": [
+    "项目名称",
+    "货物或应税劳务"
+   ],
+   "invoice_noframe_end": "合计",
+   "invoice_noframe_end_exclude": "价税合计",
+   "max_side_px": 1600,
+   "short_side_limit_px": 768,
+   "pad_px": {
+    "line_x": 10,
+    "line_y": 5,
+    "table": 4,
+    "seal": 12
+   },
+   "assign_expand_pt": 3.0,
+   "gap_classes_sent": [
+    "text_or_other"
+   ],
+   "model_table": [
+    "gpt-4o",
+    "high"
+   ],
+   "model_other": [
+    "gpt-5-mini",
+    "auto"
+   ]
+  }
+ },
+ "vlm": {
+  "model": "gpt-6.2-astra",
+  "detail": "high",
+  "reasoning_effort": "low",
+  "max_completion_tokens": 2000,
+  "prompt_kind": "line",
+  "line_prompt_sha12": "ac3aadd9f535",
+  "line_prompt": "你是文档识别助手。只转写这张裁剪图里可见的印刷文字，不翻译、不推测看不见的内容、不描述图片、不加任何前言后语。符号按图中实际形状输出（例如 ★ 与 ☆、。与 .、¥、%、±、≤、×、℃ 不要混用）。看不清的字写【?】。这是文档中一段文字的裁图，可能是一行，也可能是多行的一整段。按阅读顺序完整转写裁图内所有完整的文字行，不要只挑其中一行；只有被裁切到、只露出一小部分笔画的上下边缘行才忽略。忽略红色印章和水印；手写的人名签字忽略，但手写的日期、数字照常转写。只输出文字本身。",
+  "crop": "200 DPI 整页渲染，line/missing_line 外扩 x10/y5 px，长边 ≤1600",
+  "batch_first": true,
+  "batch_timeout_min": 10,
+  "live_config": "config_astra_v2_live.yaml（新集上须另建外发配置并经用户批准；默认 config.yaml 不外发）"
+ },
+ "scoring": {
+  "scorer": "scripts/blind20_score.py（parse_ref / score_system）+ bestconfig_run.ref_setup/categorize",
+  "rules": "NFKC、忽略空白、保留标点、参照【?】排除；【印章：…】单独计分；含「 | 」的行算表格并去掉竖线；逐页 Levenshtein",
+  "note": "blind20_score.py 里 REF/MANIFEST 路径写死为 frozen20；新集需用参数/包装脚本传入，不改计分规则本身"
+ },
+ "files_sha256": {
+  "config.yaml": "ed6761536edb3b11cb85a274d16b33100db9eedcca96fd5b1e9fbde7dfcd06ad",
+  "config_astra_v2_live.yaml": "fcf6e5e64091f97cf2f5b9f772e07814927e57e6d6d392d449122e831cc1ab25",
+  "schemas/intermediate.schema.json": "1e8f4951b9d8772282f98574eae1c814608c032daa58f3689a9ec64889158dd3",
+  "scripts/astra_run.py": "4a375722a4f9dc045acc6e0fa36d130bb0287f731f3caf89ab484add5814ae22",
+  "scripts/bestconfig_run.py": "12be05f63e4f0dd34086fee2e681bc1ca1bde0d0dfbcd6893de61fff83bf5006",
+  "scripts/bestconfig_v2_build.py": "d52a7c72c55c88ce4c609949726e7f62844d9119725e5d647e114bb363705225",
+  "scripts/bestconfig_v2_run.py": "b9c4e1966bcd20b61d1642c3d50a59ec16b29bdfe37d3890003b5719d7bd9272",
+  "scripts/blind20_score.py": "d6ff7b3308c968e36b9e7e2d4eb9adcf59d11f221efd4dfceb469ac14d9dc2d9",
+  "scripts/freeze_config_v2.py": "ade4088dd9b9c019a75698d5602dff2adb66ce266c805a27f2c69ecb158607cd",
+  "scripts/hybrid_prepare.py": "4e2ae89c66e76f09f65d8251d917c2566545eee7017efa3ac8198eff2b874880",
+  "scripts/hybrid_score.py": "0be979912b5d0ba4f2841de83861367c8e746518ad8313d6629fb2fd434f2178",
+  "scripts/run_score.py": "8bdc1ef03c2c723783f95c94796bbe68f338ccb6292de8ddd7b68ca6a6120b6c",
+  "src/baidu_ocr/__init__.py": "2e469cad0d733c11cf56725de547af26bfec0fde4f52be9d085a8bfdc15d04d6",
+  "src/baidu_ocr/auth.py": "790a1e6de115b5856d5fd07af7b32d93b14041d0bcc18e06532280aeda762400",
+  "src/baidu_ocr/blind20_local.py": "7c4f51e09c3f026d0643e6f9900935f524dd3c37c540ba62d419bfea8e17ee27",
+  "src/baidu_ocr/client.py": "2eef1394239df4ddd1414bd5f96590133eee6cc7541a9f913c2ed3eaa6bb7692",
+  "src/baidu_ocr/config.py": "09f521468ca23be6efe8f6d3765a503c8bdded11a0320937934dac1553f70dd5",
+  "src/baidu_ocr/coords.py": "f43ec69bfb20f5e5b50943efe42dffdae515d34bfaaf96c4c2232bd5ef33b7ad",
+  "src/baidu_ocr/cost.py": "4a41aad591c1d3679c8ad476bd643b960a4531e3fa3b5d5945c16d1dd3664949",
+  "src/baidu_ocr/coverage.py": "474fcf461b72acc0f02984c88665cb7da1fb0f975fa3bb34c2ab6a45a2d2c389",
+  "src/baidu_ocr/docparser.py": "3e7440f262445cedde51968086684db1bc702c18acdabc6dc45065a1c285387d",
+  "src/baidu_ocr/frozen.py": "04ddb80c588560d8a579fbd0eae17245247d9da1e10938cc8b5288e6309a2fef",
+  "src/baidu_ocr/hybrid/__init__.py": "276c342be16fc4eda769c23776003f7c9a3938c407aea6ae7df5c74122380482",
+  "src/baidu_ocr/hybrid/astra.py": "1a80978b8a4802efda3c824fe416ea315f1fc8fc7999bdbefaf56545f6e997be",
+  "src/baidu_ocr/hybrid/crops.py": "51f07992c0d7ef27dc342cbeab26239289a59a462fc7a5aa7c0f732d76439c4c",
+  "src/baidu_ocr/hybrid/inputs.py": "bc76d93449c8dd0ee8706e39badf6dce6013bbea35c38108348c0b032ca73502",
+  "src/baidu_ocr/hybrid/merge.py": "ad9c7026a65c013392cbc7e01142a065c998bef4c5d72ca1afb78f0c9e2d0094",
+  "src/baidu_ocr/hybrid/rules.py": "b4b5cb8a7a26efa56b7e3ffa5ac02752f53c39932a777dc0049b2f3dfa6e070f",
+  "src/baidu_ocr/hybrid/star_rule.py": "96d26a3f71b42b291f641abf764565d91c7421693201a52c22642f614c73db94",
+  "src/baidu_ocr/hybrid/vlm.py": "312ea9a94a5b28e426cf5cf7be316965aca8dfcc38e7e08611a2961421c93064",
+  "src/baidu_ocr/pii_gate.py": "5361e7865c0dc1eaccdec6cd19ab64203509aa2e6c7b8d1742954430de4ceea3",
+  "src/baidu_ocr/pipeline.py": "2caa87ec7aaa665d4df1b9dfaa8fa40c1e00c28093143a0c65b40220a8ddb92b",
+  "src/baidu_ocr/postprocess/__init__.py": "d34d0d404b5d140e1165852eb6fffa35b07ddaedddebd2d511feb91549ee8beb",
+  "src/baidu_ocr/postprocess/aux.py": "2cccfc61142810d76865d45d2390c63acf1d384dd8b91f99507e74c7a33411ad",
+  "src/baidu_ocr/postprocess/fill_gaps.py": "7d0d3d16c904628532f3276f9a33719efe9fe8e61683d6481cc7ac5c40992ca0",
+  "src/baidu_ocr/postprocess/invoice_reorder.py": "384e2602d060b02785b6bf8d27a83c6759a12b0172a5ca9516bcab77a8b77996",
+  "src/baidu_ocr/postprocess/pipeline.py": "ba2089ca5a4beefee6bcb50b1909e5f9f89093a7887c3e344858b9a2b75609b6",
+  "src/baidu_ocr/postprocess/seal_strip.py": "55fcb2fa72db9ed2c7918ce69654885ed94e0d813ce530c965d95fa6f69c4fe3",
+  "src/baidu_ocr/postprocess/star.py": "bebd2d2d70ea00dfe49bd2a767c1cacb5c8961c0f11cf333435ac5018224e751",
+  "src/baidu_ocr/postprocess/textutil.py": "26fc78bce0ceb23b7b296b68ca995d19ce7aeecc5db91900caf6f1ac9158ca83",
+  "src/baidu_ocr/postprocess/vlm_backfill.py": "b679c9c049c78a23f08d401ebf4d38081d8ce49d3ae9d7bde8ef061254ca51f6",
+  "src/baidu_ocr/reading_order.py": "4ff938c808dc641a477f273d456d2fe39ca729e9cda83d1205f760c394980412",
+  "src/baidu_ocr/render.py": "23006488bc4de061e6694bb6ffe579287c392e5fb3b7a0beb3c5c90c3830b6a4",
+  "src/baidu_ocr/report.py": "d29c266a22ca4e1593d235835b42f8f853a435a35603c32533a92ede09e28d60",
+  "src/baidu_ocr/route.py": "a10aec56c76eaa4cac88b5de3ff0565c518a935f26e671ab358c49d6c58b5a4e",
+  "src/baidu_ocr/score.py": "4e568d533f389a82acff20d305db0edccc5f75d7914e329bf9db0ef74bc0ed9c",
+  "src/baidu_ocr/serialize.py": "17f3e67ab9cda455a1841be6be47928116883bfe077666419511b6ae30dbb097",
+  "src/baidu_ocr/table_rebuild.py": "5965b4605e0a2e2e7d957fb2bed1a376585f9d0d3f2154abcbdb805011661106",
+  "src/baidu_ocr/text_layer.py": "39bb721632e93fdf9ffe848831cfb36f04442ee21129c23eb1d903c15ab04afc",
+  "tests/test_astra.py": "51893a0d2090fdfe36ee700abfe7cb3d9c7940fa5f6078a1fe2aa6209247a841",
+  "tests/test_hybrid.py": "51753c443215a171b1fb941eecb45309b5e477df8f4b28e80d373fcf3eecff42",
+  "tests/test_postprocess.py": "0a1d156d0307fa946cd4a61dfb7305af2840eec58aec68eeba1d440487c80653",
+  "tests/test_score.py": "d4e61cc09f8aaba445f91aa8faaff5384894c29a0ef3c39a31ebe38074d0c48e",
+  "tests/test_vlm_backfill.py": "30d7b9f8fd6eb6953821bf93a705ff407594debe665a705ad4d7dfe305fbac9d"
+ },
+ "python": "3.13.5",
+ "pip_freeze_sha256": "d382d17bd7157aa23384e6264ac37ca34875e1612d692d876e54dc51ecd42151",
+ "pip_freeze": [
+  "attrs==26.1.0",
+  "certifi==2026.10.23",
+  "charset-normalizer==3.5.2",
+  "flatbuffers==25.12.19",
+  "idna==3.20",
+  "iniconfig==2.3.1",
+  "jsonschema==4.26.0",
+  "jsonschema-specifications==2025.9.1",
+  "networkx==3.7",
+  "numpy==2.5.5",
+  "onnxruntime==1.32.0",
+  "opencv-python-headless==5.1.0.95",
+  "packaging==26.3",
+  "pillow==13.0.0",
+  "pluggy==1.7.0",
+  "protobuf==7.36.2",
+  "psutil==7.2.2",
+  "Pygments==2.21.0",
+  "pymupdf==2.1",
+  "pymupdf4llm==2.1",
+  "pymupdf_layout==2.1",
+  "pytest==9.2.0",
+  "PyYAML==6.0.3",
+  "referencing==0.37.0",
+  "requests==2.34.2",
+  "rpds-py==2026.9.1",
+  "scipy==1.18.1",
+  "tabulate==0.10.0",
+  "urllib3==2.8.0",
+  "wheel==0.48.0"
+ ],
+ "reference_outputs_sha256": {
+  "output/bestconfig_v2/blind20-scan.json": "d2e13d30f906a97ba3bb3b8d5f73ca6ea1924844d325c40040f9bfdb81a6cafe",
+  "output/bestconfig_v2/pred_pages.json": "45a58af12f166e6223725164a3f568c9fc95ff22712b66a426c8ad4a98f949b6",
+  "output/bestconfig_v2/postprocess_log.json": "7e0d7e48aac36d2cf7fbac1e80794ab491c68027676928947b1baf8e1979b719"
+ }
+}

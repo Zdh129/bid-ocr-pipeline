@@ -1,0 +1,521 @@
+{
+ "冻结时间_伦敦": "2026-11-18 12:39:18（伦敦时间，当前 UTC+0）",
+ "created_at": "2026-11-18T12:39:18+00:00",
+ "名称": "方案E",
+ "用途": "synth18e 留出集一次性验证（待用户批准外发后再跑）；冻结后不改代码、配置和脚本。新清单，不覆盖任何旧清单。",
+ "组合": "底座方案F1（不加深度求索纠错）＋变体二（发票重排第三版）＋N1 甲（发票表头固定字段）＋N2（页边竖排）＋N4（发票金额核对）；去掉变体一乙、变体三",
+ "variant": {
+  "inv": "v3",
+  "hdr": "fields",
+  "vert": true,
+  "check": true
+ },
+ "llm": "none",
+ "6.2": "方案E 不用；只在 v2 对照行里用，且须用户单独批准",
+ "流水线": "image_fill → star(R1-R3) → fill_gaps(A+U) → invoice_reorder_v3 → reread → invoice_header(fields) → vertical_margin → invoice_check → star_fill",
+ "输入": {
+  "B": "文档解析标准版，原图",
+  "A": "高精度识别，颜色去章图，强制高精度（另跑原图原走法，供页边竖排的渲染图、v2 对照）",
+  "U": "无限量识别，颜色去章图（v2 对照用原图）",
+  "reread": "颜色去章图高精度识别的低置信度行",
+  "vertical": "原图 200 DPI 渲染"
+ },
+ "计分": {
+  "口径": [
+   "主口径（容错，签名入参照）",
+   "剔除签名口径",
+   "严格口径"
+  ],
+  "分版面": "manifest.json 的 doc_type，严格口径",
+  "对照": [
+   "文档解析原始结果",
+   "v2（6.2 未获批时报「v2 去掉 6.2」）",
+   "方案F1（参考）"
+  ],
+  "一次性": "output/synth18e/SCORED"
+ },
+ "分组": {
+  "组合代码": [
+   "src/baidu_ocr/__init__.py",
+   "src/baidu_ocr/auth.py",
+   "src/baidu_ocr/blind20_local.py",
+   "src/baidu_ocr/client.py",
+   "src/baidu_ocr/config.py",
+   "src/baidu_ocr/coords.py",
+   "src/baidu_ocr/cost.py",
+   "src/baidu_ocr/coverage.py",
+   "src/baidu_ocr/docparser.py",
+   "src/baidu_ocr/frozen.py",
+   "src/baidu_ocr/hybrid/__init__.py",
+   "src/baidu_ocr/hybrid/astra.py",
+   "src/baidu_ocr/hybrid/crops.py",
+   "src/baidu_ocr/hybrid/inputs.py",
+   "src/baidu_ocr/hybrid/merge.py",
+   "src/baidu_ocr/hybrid/rules.py",
+   "src/baidu_ocr/hybrid/star_rule.py",
+   "src/baidu_ocr/hybrid/vlm.py",
+   "src/baidu_ocr/pii_gate.py",
+   "src/baidu_ocr/pipeline.py",
+   "src/baidu_ocr/postprocess/__init__.py",
+   "src/baidu_ocr/postprocess/aux.py",
+   "src/baidu_ocr/postprocess/fill_gaps.py",
+   "src/baidu_ocr/postprocess/invoice_check.py",
+   "src/baidu_ocr/postprocess/invoice_header.py",
+   "src/baidu_ocr/postprocess/invoice_reorder.py",
+   "src/baidu_ocr/postprocess/invoice_reorder_v2.py",
+   "src/baidu_ocr/postprocess/invoice_reorder_v3.py",
+   "src/baidu_ocr/postprocess/pipeline.py",
+   "src/baidu_ocr/postprocess/reread.py",
+   "src/baidu_ocr/postprocess/seal_fill_guard.py",
+   "src/baidu_ocr/postprocess/seal_leak.py",
+   "src/baidu_ocr/postprocess/seal_strip.py",
+   "src/baidu_ocr/postprocess/star.py",
+   "src/baidu_ocr/postprocess/star_fill.py",
+   "src/baidu_ocr/postprocess/star_filter.py",
+   "src/baidu_ocr/postprocess/textutil.py",
+   "src/baidu_ocr/postprocess/vertical_margin.py",
+   "src/baidu_ocr/postprocess/vlm_backfill.py",
+   "src/baidu_ocr/reading_order.py",
+   "src/baidu_ocr/render.py",
+   "src/baidu_ocr/report.py",
+   "src/baidu_ocr/route.py",
+   "src/baidu_ocr/score.py",
+   "src/baidu_ocr/serialize.py",
+   "src/baidu_ocr/table_rebuild.py",
+   "src/baidu_ocr/text_layer.py",
+   "scripts/f1r2.py",
+   "scripts/synth18_combos.py",
+   "scripts/synth18_preproc.py"
+  ],
+  "组合配置": [
+   "config_方案E.yaml",
+   "config.yaml"
+  ],
+  "百度调用与构建": [
+   "scripts/run_scheme_b.py",
+   "scripts/opt2_scheme_a_call.py",
+   "scripts/synth18e_scheme_a_call.py",
+   "scripts/opt2_reread.py",
+   "scripts/f1r2_vert_call.py",
+   "scripts/blind20_build.py"
+  ],
+  "v2 对照": [
+   "output/blindset2_prep/frozen_config_v2.json",
+   "scripts/synth18_run.py",
+   "scripts/astra_run.py",
+   "config_astra_v2_live.yaml"
+  ],
+  "计分": [
+   "scripts/blind20_score.py",
+   "scripts/tolerant_score.py",
+   "scripts/synth18b_score.py",
+   "scripts/synth18b_run.py",
+   "scripts/synth18_score.py",
+   "scripts/bestconfig_run.py",
+   "scripts/hybrid_score.py",
+   "scripts/synth18_opt_phase2.py"
+  ],
+  "synth18e 运行与计分脚手架": [
+   "scripts/synth18e_run.py",
+   "scripts/synth18e_score.py",
+   "scripts/synth18e_freeze.py",
+   "scripts/synth18_ready_check.py",
+   "scripts/ready_check_方案E.py"
+  ]
+ },
+ "来源核对": {
+  "src/baidu_ocr/__init__.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/auth.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/blind20_local.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/client.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/config.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/coords.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/cost.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/coverage.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/docparser.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/frozen.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/__init__.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/astra.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/crops.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/inputs.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/merge.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/rules.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/star_rule.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/hybrid/vlm.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/pii_gate.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/pipeline.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/__init__.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/aux.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/fill_gaps.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/invoice_check.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/invoice_header.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/invoice_reorder.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/invoice_reorder_v2.py": [
+   "frozen_推荐组合",
+   "synth18c"
+  ],
+  "src/baidu_ocr/postprocess/invoice_reorder_v3.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/pipeline.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/reread.py": [
+   "frozen_推荐组合",
+   "synth18c"
+  ],
+  "src/baidu_ocr/postprocess/seal_fill_guard.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/seal_leak.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/seal_strip.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/star.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/star_fill.py": [
+   "frozen_推荐组合",
+   "synth18c"
+  ],
+  "src/baidu_ocr/postprocess/star_filter.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/textutil.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/postprocess/vertical_margin.py": [
+   "frozen_推荐组合"
+  ],
+  "src/baidu_ocr/postprocess/vlm_backfill.py": [
+   "frozen_推荐组合",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/reading_order.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/render.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/report.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/route.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/score.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/serialize.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/table_rebuild.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "src/baidu_ocr/text_layer.py": [
+   "frozen_推荐组合",
+   "frozen_config_v2"
+  ],
+  "scripts/f1r2.py": [
+   "frozen_推荐组合"
+  ],
+  "scripts/synth18_combos.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/synth18_preproc.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "config_方案E.yaml": [],
+  "config.yaml": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "scripts/run_scheme_b.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/opt2_scheme_a_call.py": [
+   "frozen_推荐组合",
+   "synth18c"
+  ],
+  "scripts/synth18e_scheme_a_call.py": [],
+  "scripts/opt2_reread.py": [
+   "frozen_推荐组合",
+   "synth18c"
+  ],
+  "scripts/f1r2_vert_call.py": [
+   "frozen_推荐组合"
+  ],
+  "scripts/blind20_build.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "output/blindset2_prep/frozen_config_v2.json": [
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/synth18_run.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/astra_run.py": [
+   "frozen_config_v2"
+  ],
+  "config_astra_v2_live.yaml": [
+   "frozen_config_v2"
+  ],
+  "scripts/blind20_score.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "scripts/tolerant_score.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/synth18b_score.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/synth18b_run.py": [
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/synth18_score.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c"
+  ],
+  "scripts/bestconfig_run.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "scripts/hybrid_score.py": [
+   "frozen_推荐组合",
+   "synth18b",
+   "synth18c",
+   "frozen_config_v2"
+  ],
+  "scripts/synth18_opt_phase2.py": [],
+  "scripts/synth18e_run.py": [],
+  "scripts/synth18e_score.py": [],
+  "scripts/synth18e_freeze.py": [],
+  "scripts/synth18_ready_check.py": [],
+  "scripts/ready_check_方案E.py": []
+ },
+ "旧清单里没有的文件": [
+  "config_方案E.yaml",
+  "scripts/synth18e_scheme_a_call.py",
+  "scripts/synth18_opt_phase2.py",
+  "scripts/synth18e_run.py",
+  "scripts/synth18e_score.py",
+  "scripts/synth18e_freeze.py",
+  "scripts/synth18_ready_check.py",
+  "scripts/ready_check_方案E.py"
+ ],
+ "旧清单 sha256": {
+  "frozen_推荐组合": "3f7f054c3591898733924257b350d4129c53d78af85d128915ce7f56deb090f0",
+  "synth18b": "df781423f17b74e86e4329b1f7bc6918d40288b196dee2ecb045d528efacb556",
+  "synth18c": "c242e89ad3addda12e04bcfb4c6b21c21afe7fd795b4f355805c667f76966691",
+  "frozen_config_v2": "1ab69580e53cdd316b426f22f558d996f887269ce871fa7187c0b38686e1c086"
+ },
+ "code_sha256": {
+  "src/baidu_ocr/__init__.py": "2e469cad0d733c11cf56725de547af26bfec0fde4f52be9d085a8bfdc15d04d6",
+  "src/baidu_ocr/auth.py": "790a1e6de115b5856d5fd07af7b32d93b14041d0bcc18e06532280aeda762400",
+  "src/baidu_ocr/blind20_local.py": "7c4f51e09c3f026d0643e6f9900935f524dd3c37c540ba62d419bfea8e17ee27",
+  "src/baidu_ocr/client.py": "2eef1394239df4ddd1414bd5f96590133eee6cc7541a9f913c2ed3eaa6bb7692",
+  "src/baidu_ocr/config.py": "09f521468ca23be6efe8f6d3765a503c8bdded11a0320937934dac1553f70dd5",
+  "src/baidu_ocr/coords.py": "f43ec69bfb20f5e5b50943efe42dffdae515d34bfaaf96c4c2232bd5ef33b7ad",
+  "src/baidu_ocr/cost.py": "4a41aad591c1d3679c8ad476bd643b960a4531e3fa3b5d5945c16d1dd3664949",
+  "src/baidu_ocr/coverage.py": "474fcf461b72acc0f02984c88665cb7da1fb0f975fa3bb34c2ab6a45a2d2c389",
+  "src/baidu_ocr/docparser.py": "3e7440f262445cedde51968086684db1bc702c18acdabc6dc45065a1c285387d",
+  "src/baidu_ocr/frozen.py": "04ddb80c588560d8a579fbd0eae17245247d9da1e10938cc8b5288e6309a2fef",
+  "src/baidu_ocr/hybrid/__init__.py": "276c342be16fc4eda769c23776003f7c9a3938c407aea6ae7df5c74122380482",
+  "src/baidu_ocr/hybrid/astra.py": "1a80978b8a4802efda3c824fe416ea315f1fc8fc7999bdbefaf56545f6e997be",
+  "src/baidu_ocr/hybrid/crops.py": "51f07992c0d7ef27dc342cbeab26239289a59a462fc7a5aa7c0f732d76439c4c",
+  "src/baidu_ocr/hybrid/inputs.py": "bc76d93449c8dd0ee8706e39badf6dce6013bbea35c38108348c0b032ca73502",
+  "src/baidu_ocr/hybrid/merge.py": "ad9c7026a65c013392cbc7e01142a065c998bef4c5d72ca1afb78f0c9e2d0094",
+  "src/baidu_ocr/hybrid/rules.py": "b4b5cb8a7a26efa56b7e3ffa5ac02752f53c39932a777dc0049b2f3dfa6e070f",
+  "src/baidu_ocr/hybrid/star_rule.py": "96d26a3f71b42b291f641abf764565d91c7421693201a52c22642f614c73db94",
+  "src/baidu_ocr/hybrid/vlm.py": "312ea9a94a5b28e426cf5cf7be316965aca8dfcc38e7e08611a2961421c93064",
+  "src/baidu_ocr/pii_gate.py": "5361e7865c0dc1eaccdec6cd19ab64203509aa2e6c7b8d1742954430de4ceea3",
+  "src/baidu_ocr/pipeline.py": "2caa87ec7aaa665d4df1b9dfaa8fa40c1e00c28093143a0c65b40220a8ddb92b",
+  "src/baidu_ocr/postprocess/__init__.py": "d34d0d404b5d140e1165852eb6fffa35b07ddaedddebd2d511feb91549ee8beb",
+  "src/baidu_ocr/postprocess/aux.py": "2cccfc61142810d76865d45d2390c63acf1d384dd8b91f99507e74c7a33411ad",
+  "src/baidu_ocr/postprocess/fill_gaps.py": "7d0d3d16c904628532f3276f9a33719efe9fe8e61683d6481cc7ac5c40992ca0",
+  "src/baidu_ocr/postprocess/invoice_check.py": "3c7986d895b3028659b95e764a1bc3ee519fae4d2f99c12772617433ce1e5054",
+  "src/baidu_ocr/postprocess/invoice_header.py": "b8d52ca70bfca69870ca7f0d1c453ae603c3ff8882047b9ba62fd44a48122b8f",
+  "src/baidu_ocr/postprocess/invoice_reorder.py": "384e2602d060b02785b6bf8d27a83c6759a12b0172a5ca9516bcab77a8b77996",
+  "src/baidu_ocr/postprocess/invoice_reorder_v2.py": "c681fd606541d9c46a53b8d5e3f87dc865ecf2753d8b7542edb1ad20a57492ce",
+  "src/baidu_ocr/postprocess/invoice_reorder_v3.py": "5b648e6519434be190ebe8ee89395811d6b181e19b2ac992eb65edfd3bf6f46d",
+  "src/baidu_ocr/postprocess/pipeline.py": "ba2089ca5a4beefee6bcb50b1909e5f9f89093a7887c3e344858b9a2b75609b6",
+  "src/baidu_ocr/postprocess/reread.py": "40f11604def052559d76ec7da4dbbbeccc58cb8a23f4197f9a2aebcf6c6b3199",
+  "src/baidu_ocr/postprocess/seal_fill_guard.py": "5fb03ef41676d84bfcb741bdfdd25f425e0a32fd012059dcf4f35e165ed01e83",
+  "src/baidu_ocr/postprocess/seal_leak.py": "7cfed5dbd1ebaca15f7c80aaeb4915e5984d864b7968abcae1d9b8432825cef0",
+  "src/baidu_ocr/postprocess/seal_strip.py": "55fcb2fa72db9ed2c7918ce69654885ed94e0d813ce530c965d95fa6f69c4fe3",
+  "src/baidu_ocr/postprocess/star.py": "bebd2d2d70ea00dfe49bd2a767c1cacb5c8961c0f11cf333435ac5018224e751",
+  "src/baidu_ocr/postprocess/star_fill.py": "315e356b0bb2249d75149d41810a4de8acb77d0f4499e12485e4a8c1bce91917",
+  "src/baidu_ocr/postprocess/star_filter.py": "992ec6d5395af5eab6a091817f57eb62e6024fde81d4b9ead5f358e76e8766b9",
+  "src/baidu_ocr/postprocess/textutil.py": "26fc78bce0ceb23b7b296b68ca995d19ce7aeecc5db91900caf6f1ac9158ca83",
+  "src/baidu_ocr/postprocess/vertical_margin.py": "cee75c10e060cbcbd58ce8d5b8779d1e566c9d66c2e1ebe0b5855326665839d7",
+  "src/baidu_ocr/postprocess/vlm_backfill.py": "b679c9c049c78a23f08d401ebf4d38081d8ce49d3ae9d7bde8ef061254ca51f6",
+  "src/baidu_ocr/reading_order.py": "4ff938c808dc641a477f273d456d2fe39ca729e9cda83d1205f760c394980412",
+  "src/baidu_ocr/render.py": "23006488bc4de061e6694bb6ffe579287c392e5fb3b7a0beb3c5c90c3830b6a4",
+  "src/baidu_ocr/report.py": "d29c266a22ca4e1593d235835b42f8f853a435a35603c32533a92ede09e28d60",
+  "src/baidu_ocr/route.py": "a10aec56c76eaa4cac88b5de3ff0565c518a935f26e671ab358c49d6c58b5a4e",
+  "src/baidu_ocr/score.py": "4e568d533f389a82acff20d305db0edccc5f75d7914e329bf9db0ef74bc0ed9c",
+  "src/baidu_ocr/serialize.py": "17f3e67ab9cda455a1841be6be47928116883bfe077666419511b6ae30dbb097",
+  "src/baidu_ocr/table_rebuild.py": "5965b4605e0a2e2e7d957fb2bed1a376585f9d0d3f2154abcbdb805011661106",
+  "src/baidu_ocr/text_layer.py": "39bb721632e93fdf9ffe848831cfb36f04442ee21129c23eb1d903c15ab04afc",
+  "scripts/f1r2.py": "23e669f1f71c2d956ac5fb47be7d2e9798164a7e805228e3de1e1ef7de341504",
+  "scripts/synth18_combos.py": "7f5827ec4aeb423b390735f6aea8b86750204121f947bfc4f5800c3eb3677177",
+  "scripts/synth18_preproc.py": "7e27c0dc8bc5bf55f7977140e9bdd34f41edd056aa012964f717588a5f8bdff4",
+  "config_方案E.yaml": "10a49e46017a94690e2a691791b47f4434af7797d7df07a63864f96ac4459808",
+  "config.yaml": "ed6761536edb3b11cb85a274d16b33100db9eedcca96fd5b1e9fbde7dfcd06ad",
+  "scripts/run_scheme_b.py": "480d2783d28814164ad5965d48c3b27dd722290b1088f2d2a5bf4996c46fab80",
+  "scripts/opt2_scheme_a_call.py": "a6f1ef52516ccee205dde8e516338f7281df0b2c9dfbd7b6e67884f089c28cf6",
+  "scripts/synth18e_scheme_a_call.py": "8d8344dfdcfc2ef2d2df5405184f57fe5adbffbf008a405e0ab300335bf395a8",
+  "scripts/opt2_reread.py": "834120fe5d9e6fed7fcf88dcc03881231680ae28548dc3d3e946ec4890de27ce",
+  "scripts/f1r2_vert_call.py": "e30e984b642c8122218a6381ad20f10510bef2f322d66cb901243b46edf32963",
+  "scripts/blind20_build.py": "ec7ca4048c65e5baed44df8f356228f8dd48e7fa6544071d2c8e87cf19066f54",
+  "output/blindset2_prep/frozen_config_v2.json": "1ab69580e53cdd316b426f22f558d996f887269ce871fa7187c0b38686e1c086",
+  "scripts/synth18_run.py": "500942e156acbbaf6f2501cad3d646a1aa51ba3ce71f3c41998a62f0b5fea41c",
+  "scripts/astra_run.py": "4a375722a4f9dc045acc6e0fa36d130bb0287f731f3caf89ab484add5814ae22",
+  "config_astra_v2_live.yaml": "fcf6e5e64091f97cf2f5b9f772e07814927e57e6d6d392d449122e831cc1ab25",
+  "scripts/blind20_score.py": "d6ff7b3308c968e36b9e7e2d4eb9adcf59d11f221efd4dfceb469ac14d9dc2d9",
+  "scripts/tolerant_score.py": "9fc48205f6313ebae8f8fa4bc47ed077627026aca13b02f65cb7621705362d47",
+  "scripts/synth18b_score.py": "af17c0a5f5fc7e559473bc25f8ff64647fd7987a472182e3edb0ef692a3f7a6d",
+  "scripts/synth18b_run.py": "12a19f4820c2a1ee7323c5c7988fad513155cbd000ac4fc65878a5f5a4ccc87d",
+  "scripts/synth18_score.py": "e738ce0ce9d4a43220a11756c467ac5e9001fb75a35bbc2edd1d9a62739a76fd",
+  "scripts/bestconfig_run.py": "12be05f63e4f0dd34086fee2e681bc1ca1bde0d0dfbcd6893de61fff83bf5006",
+  "scripts/hybrid_score.py": "0be979912b5d0ba4f2841de83861367c8e746518ad8313d6629fb2fd434f2178",
+  "scripts/synth18_opt_phase2.py": "79c03b0b38496927d5cadd19b232d5f0b90bb6080cb448544c770add35ac39b6",
+  "scripts/synth18e_run.py": "d8f0d56fbbbf99bbc4b7321b1553be931f96be793485565fb3566964326be637",
+  "scripts/synth18e_score.py": "1ad40debf9490ff688ca4571404b8d4df0c8b27ca7691c2e42897c49ce87f432",
+  "scripts/synth18e_freeze.py": "e9d3066581f35cbb44c8dc1be24b59ecfdd34276960475ab6bd1eb80dcd3d045",
+  "scripts/synth18_ready_check.py": "b89f92ff4454204d18b9efcb37987b66227d634d3eb327ad9188002ebf97cad1",
+  "scripts/ready_check_方案E.py": "3639a727406c147cbb837f3f76dedf057b77b27896fe41699fe4eee6a610a372"
+ }
+}

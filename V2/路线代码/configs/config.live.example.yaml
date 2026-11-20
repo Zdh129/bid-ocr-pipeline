@@ -1,0 +1,26 @@
+# 外发复测配置模板。复制后按需修改，不要把密钥写进本文件。
+# 使用前：环境变量已设置、allow_external 为 true，并且命令行同时加 --allow-external。
+# 默认请保持 allow_external: false。
+
+project_root: .
+allow_external: false
+
+auth:
+  api_key_env: BAIDU_OCR_API_KEY
+  secret_key_env: BAIDU_OCR_SECRET_KEY
+  token_url: https://aip.baidubce.com/oauth/2.0/token
+  timeout_sec: 30
+
+render:
+  dpi: 200
+
+docparser:
+  edition: standard
+  drop_pii_pages: false
+
+pii:
+  enabled: false
+
+paths:
+  output_dir: output
+  schema_path: schemas/intermediate.schema.json

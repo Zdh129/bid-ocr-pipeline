@@ -1,0 +1,15 @@
+# gpt-6.2-astra 视觉复核外发配置（只用于 scripts/astra_run.py --live）。默认 config.yaml 的 allow_external 仍为 false。
+# bestconfig_v2 专用：外发范围只限 output/bestconfig_v2/manifest.json 里未复用的新裁图（blind20 漏读行 / 手写日期两类）。
+# 原：output/astra/manifest.json 列出的 blind20 裁图（来自 frozen20/blind20-scan.pdf，长边 ≤1600），不发整页、不发其他文件。
+vlm:
+  allow_external: true   # 2026-11-18 donghao 本人在聊天中批准（父 agent 转述原话）：“批准把 blind20 的难区域裁图发给 OpenAI gpt-6.2-astra 做复核，OpenAI 硬上限 $5”
+  api_key_env: OPENAI_API_KEY
+  model: gpt-6.2-astra
+  detail: high
+  reasoning_effort: low
+  max_completion_tokens: 2000   # 单请求输出上限（含推理 token），用于保证最坏情况不超 $5
+  hard_cap_usd: 4.850604        # = $5 − astra 单测已花 $0.149396（累计口径含所有尝试；达到即停）
+  batch_timeout_min: 10   # 2026-11-18 父 agent 调整：速度优先，超 10 分钟取消转标准接口
+  timeout_sec: 180
+  max_retries: 2
+  cny_per_usd: 7.2
