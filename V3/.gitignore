@@ -1,0 +1,13 @@
+# 本快照目录内不得提交运行产物
+__pycache__/
+*.py[cod]
+.pytest_cache/
+成绩/
+预测/
+日志/
+*.log
+*.pdf
+*.png
+*.jpg
+*.jpeg
+.env
