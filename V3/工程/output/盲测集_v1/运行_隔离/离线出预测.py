@@ -4,21 +4,35 @@ import copy, json, sys
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-ISO = Path('/workspace/pdf-test/baidu/output/盲测集_v1/运行_隔离')
-ROOT = Path('/workspace/pdf-test/baidu')
-OUTR = Path('/workspace/pdf-test/baidu/output/盲测集_v1/识别结果')
-W = ROOT / 'output' / 'swisstransfer盲测'
+# 【仓库副本：只改路径与加载】数据目录：OCR_RUN_ISO（本份材料的运行隔离目录）；输出目录：OCR_RESULT_DIR（默认 运行隔离目录的上一级/识别结果）。
+# 代码目录：仓库 V3/工程/output/…（原试验机 baidu/output/… 的逐字节副本）与仓库 scripts/、src/。
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+try:
+    ISO = LP.run_iso(required=True)
+except LP.MissingInputError as _e:
+    print(_e, file=sys.stderr); sys.exit(1)
+ROOT = LP.repo_root()
+ENG = LP.v3_root() / '工程'
+OUTR = LP.result_dir_path()
+W = ENG / 'output' / 'swisstransfer盲测'
 H5 = W / '组合五副本'
 src = H5 / '复跑_第五轮.py'
 NS = {'__file__': str(src), '__name__': 'combo_header'}
 exec(compile(src.read_text(encoding='utf-8').split('# ---------- 主流程 ----------')[0], str(src), 'exec'), NS)
+# 底座子进程的工作目录：原为试验机 baidu 根（其中没有 pipeline 包）。仓库根有 pipeline 包，会让 tablerow 改走仓库分支、
+# 与原机加载的模块不同；所以设为本份材料的运行隔离目录（只有数据、不含代码），与原机一样走 tablerow 的试验机分支。
+NS['ROOT'] = ISO
 CFG = copy.deepcopy(NS['CFG'])
 layers = NS['layers']
 
-sys.path.insert(0, str(ROOT / 'output' / 'synth18e专项优化' / '工具'))
+sys.path.insert(0, str(ENG / 'output' / 'synth18e专项优化' / '工具'))
 from 公共 import F as ZF
 import 规则_专项 as Z
-sys.path.insert(0, str(ROOT / 'output' / '第六轮_组合五乙1优化' / '工具'))
+sys.path.insert(0, str(ENG / 'output' / '第六轮_组合五乙1优化' / '工具'))
 import 第六轮规则 as R6
 
 RUN = ISO / '运行'
@@ -37,6 +51,15 @@ sg = dict(
     vert=RUN / 'blind30' / 'vertical' / 'results.json',
     off=0,
 )
+# 缺识别缓存或上游预测时：中文报错、退出码 1，不写识别结果
+try:
+    for _k2 in ('C', 'pdf', 'doc', 'rr', 'vert'):
+        LP.require_file(sg[_k2], f'上游输入 {_k2}（{Path(sg[_k2]).name}）', LP.ENV_RUN_ISO)
+    for _k2 in ('sa_o', 'sa_p2'):
+        LP.require_file(Path(sg[_k2]) / 'call_summary.json', f'高精度缓存 {_k2}/call_summary.json', LP.ENV_RUN_ISO)
+    LP.require_dir(sg['rd'], '原图高精度渲染图 renders/', LP.ENV_RUN_ISO)
+except LP.MissingInputError as _e:
+    print(_e, file=sys.stderr); sys.exit(1)
 
 def boxes(d, q):
     pages = json.load(open(Path(d) / 'call_summary.json'))['pages']

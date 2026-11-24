@@ -15,7 +15,14 @@ import sys
 import time
 from pathlib import Path
 
-ROOT = Path("/workspace/pdf-test/baidu")
+# 【仓库副本：只改路径】代码根＝仓库根；本份材料的数据目录由 OCR_RUN_ISO 指定。
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LPATHS
+ROOT = LPATHS.repo_root()
+ISO = LPATHS.run_iso_path()
 sys.path.insert(0, str(ROOT / "src"))
 
 import cv2
@@ -154,9 +161,9 @@ def call(client, image_path, api, page, kind, raw_dir, log):
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default="/workspace/pdf-test/baidu/output/盲测集_v1/运行_隔离/config_live.yaml")
+    ap.add_argument("--config", default=str(ISO / "config_live.yaml"))
     ap.add_argument("--allow-external", action="store_true")
-    ap.add_argument("--out", default="/workspace/pdf-test/baidu/output/盲测集_v1/运行_隔离/运行/P2/work/output/scheme_a")
+    ap.add_argument("--out", default=str(ISO / "运行/P2/work/output/scheme_a"))
     ap.add_argument("--force-api", default="", help="诊断：所有页强制用某接口（如 general）")
     ap.add_argument("--no-retry", action="store_true")
     ap.add_argument("--input", default="")
@@ -167,9 +174,9 @@ def main() -> int:
         return 2
     # synth18b 版：不走 check_frozen20（它会读参照与 manifest）；只认配置里的扫描件路径 + sha256
     pdf = Path(cfg["blind30"]["scan_pdf"])
-    assert pdf.parent == Path("/workspace/pdf-test/baidu/output/盲测集_v1/运行_隔离/输入") and sha256_file(pdf) == cfg["blind30"]["scan_sha256"], "blind30 扫描件 sha 不符"
+    assert pdf.parent == LPATHS.run_iso(required=True) / "输入" and sha256_file(pdf) == cfg["blind30"]["scan_sha256"], "blind30 扫描件 sha 不符"
     if args.input:
-        p2 = Path("/workspace/pdf-test/baidu/output/盲测集_v1/运行_隔离/运行/P2/blind30-P2.pdf").resolve()
+        p2 = (ISO / "运行/P2/blind30-P2.pdf").resolve()
         rec = json.loads((p2.parent / "prep.json").read_text(encoding="utf-8"))
         assert Path(args.input).resolve() == p2 and sha256_file(p2) == rec["p2_pdf_sha256"], "只允许 prep 生成的 blind30-P2.pdf"
         pdf = p2

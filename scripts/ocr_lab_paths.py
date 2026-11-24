@@ -173,3 +173,46 @@ def ensure_scripts_on_path() -> None:
     s = str(repo_root() / "scripts")
     if s not in sys.path:
         sys.path.insert(0, s)
+
+
+# ---------- 上游生成（第六轮新版、整合版）所用的运行隔离目录 ----------
+ENV_RUN_ISO = "OCR_RUN_ISO"
+ENV_RESULT_DIR = "OCR_RESULT_DIR"
+_PLACEHOLDER_ISO = Path("__OCR_RUN_ISO_未设置__")
+
+
+def run_iso(*, required: bool = False) -> Path | None:
+    """一份材料的运行隔离目录（含 输入/、运行/、config_live.yaml、恢复配置.json）。"""
+    raw = os.environ.get(ENV_RUN_ISO, "").strip()
+    if not raw:
+        if required:
+            raise MissingInputError(
+                f"未设置环境变量 {ENV_RUN_ISO}，无法定位本份材料的运行隔离目录（含 输入/、运行/ 识别缓存、config_live.yaml、恢复配置.json）。"
+                f"请设置 {ENV_RUN_ISO} 后重试。"
+            )
+        return None
+    p = Path(raw)
+    if required and not p.is_dir():
+        raise MissingInputError(f"环境变量 {ENV_RUN_ISO} 指向的目录不存在：{p}。请改为本份材料的运行隔离目录后重试。")
+    return p
+
+
+def run_iso_path() -> Path:
+    """仅用于构造路径；未设置时返回占位路径，不在 import 时报错。"""
+    return run_iso(required=False) or _PLACEHOLDER_ISO
+
+
+def result_dir_path() -> Path:
+    """第六轮新版.json、整合版.json 的输出目录：优先 OCR_RESULT_DIR，否则为 运行隔离目录的上一级/识别结果（与原试验机盲测集布局相同）。"""
+    raw = os.environ.get(ENV_RESULT_DIR, "").strip()
+    if raw:
+        return Path(raw)
+    return run_iso_path().parent / "识别结果"
+
+
+def lab_python() -> str:
+    """原试验机 venv 存在时用它，否则用当前解释器。"""
+    br = baidu_root(required=False)
+    if br is not None and (br / ".venv/bin/python").is_file():
+        return str(br / ".venv/bin/python")
+    return sys.executable

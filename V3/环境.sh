@@ -30,6 +30,8 @@ _PATHS=(
   "$_ENG/output/博凯_清零/工具"
   "$_ENG/output/盲测_版面约束/版面分析优化计划/试算/第5轮/综合测试_2776d4b"
   "$_ENG/output/盲测集_v1/给ChatGPT"
+  "$_ENG/output/盲测集_v1/运行_隔离"
+  "$_ENG/output/第六轮_组合五乙1优化/工具"
   "$_REPO/src"
   "$_REPO/scripts"
   "$_REPO/rules/baseline_c"
@@ -39,7 +41,7 @@ _PATHS=(
   "$_RULES/baseline_c"
 )
 _JOIN="$(IFS=:; echo "${_PATHS[*]}")"
-export PYTHONPATH="${_JOIN}${PYTHONPATH:+:}$PYTHONPATH"
+export PYTHONPATH="${_JOIN}${PYTHONPATH:+:}${PYTHONPATH:-}"
 export R5_MODS="$_RULES/round5"
 export R5_STACK3="$_RULES/round3/frozen_stack3.py"
 export M6_LAB_ROOT="$_ENG"

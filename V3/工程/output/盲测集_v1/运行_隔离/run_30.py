@@ -20,12 +20,19 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 import yaml
 
-ROOT = Path('/workspace/pdf-test/baidu')
+# 【仓库副本：只改路径与加载】代码走仓库内路径；本份材料的数据目录由环境变量 OCR_RUN_ISO 指定（见 ocr_lab_paths.py）。
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+HERE = Path(__file__).resolve().parent   # 本目录（capwrap.py、stoprule.py、scheme_a_call.py 所在）
+ROOT = LP.repo_root()   # 原为试验机 baidu 根：src/、scripts/、config_方案E.yaml 等代码与冻结清单
 sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'scripts')]
-D = ROOT / 'output' / '盲测_版面约束'
-NB = Path('/workspace/pdf-test/baidu/output/盲测集_v1/运行_隔离')
+D = LP.baidu_root_path() / 'output' / '盲测_版面约束'
+NB = LP.run_iso_path()   # 原为固定的 运行_隔离 目录；现为本份材料的运行隔离目录（数据）
 SET = NB / '输入'
-FZ = D / '冻结规则'
+FZ = ROOT / 'rules' / 'baseline_c'   # 原 output/盲测_版面约束/冻结规则 的逐字节副本
 OUT = NB / '运行'
 WO, WP = OUT / 'orig' / 'work', OUT / 'P2' / 'work'
 CFG = NB / 'config_live.yaml'
@@ -33,17 +40,25 @@ FROZEN = ROOT / 'output' / 'synth18e_prep' / 'frozen_方案E.json'
 COMBO = ROOT / 'config_方案E.yaml'
 EXPECTED = {'inv': 'v3', 'hdr': 'fields', 'vert': True, 'check': True}
 PROD_SHA = 'a34c9d238a22214c1495ac115be2515db09f84bd13982380c446a63a4c91eaf3'
-RC = json.loads((NB / '恢复配置.json').read_text(encoding='utf-8'))
-PAGE_CAP = int(RC['页上限'])
+class _LazyRC(dict):
+    """恢复配置.json 用到时再读（import 时不读数据）；缺文件时明确中文报错。"""
+    def _load(self):
+        if not dict.__len__(self):
+            dict.update(self, LP.load_json(LP.run_iso(required=True) / '恢复配置.json', '运行隔离目录里的 恢复配置.json', LP.ENV_RUN_ISO))
+        return self
+    def __getitem__(self, k): return dict.__getitem__(self._load(), k)
+    def __contains__(self, k): return dict.__contains__(self._load(), k)
+RC = _LazyRC()
+def _page_cap(): return int(RC['页上限'])
 import os as _os
 for _k in ('BAIDU_OCR_API_KEY', 'BAIDU_OCR_SECRET_KEY'):
     if _k in _os.environ:
         _os.environ[_k] = _os.environ[_k].rstrip()
 ROUTE = _os.environ.get('SWISS_ROUTE', '')
 CAP = 10 ** 9   # 恢复版：总量不再按旧的 380 单位把关，改由 capwrap.py 按各接口上限（估算×1.2）和后付费金额把关
-PY = str(ROOT / '.venv' / 'bin' / 'python')
+PY = LP.lab_python()
 NAME = 'blind30'
-TS = Path('/workspace/pdf-test/baidu/output/盲测_版面约束/版面分析优化计划/试算')
+TS = LP.v3_root() / '工程/output/盲测_版面约束/版面分析优化计划/试算'
 
 
 def jl(p): return json.loads(Path(p).read_text(encoding='utf-8'))
@@ -61,10 +76,22 @@ def log(ev):
 
 def verify():
     """隔离副本：只核对生产配置未被改、仓库默认不允许外发、方案E 冻结代码与组合开关一致、本任务扫描件 sha 相符。不改冻结目录。"""
-    assert sha(ROOT.parent / 'ocr' / 'config.yaml') == PROD_SHA, '生产配置被改过'
+    LP.run_iso(required=True); LP.require_file(CFG, '运行隔离目录里的 config_live.yaml', LP.ENV_RUN_ISO)
+    if LP.lab_checks_enabled():   # 原机检查：生产配置 sha、原 baidu 根整树冻结代码
+        BR = LP.baidu_root(required=True)
+        assert sha(BR.parent / 'ocr' / 'config.yaml') == PROD_SHA, '生产配置被改过'
     assert yaml.safe_load((ROOT / 'config.yaml').read_text(encoding='utf-8'))['allow_external'] is False
     fz = jl(FROZEN)
-    bad = [c for c, s in fz['code_sha256'].items() if sha(ROOT / c) != s]
+    if LP.lab_checks_enabled():
+        bad = [c for c, s in fz['code_sha256'].items() if sha(BR / c) != s]
+    else:
+        # 仓库布局：冻结快照 rules/baseline_c/基线C_方案E/ 须与冻结清单逐文件一致；实际运行的 .py 须与冻结一致；
+        # 根目录 config.yaml 导出时去敏（只改注释和路径），核对其 postprocess 段与冻结快照相同。
+        SNAP = ROOT / 'rules' / 'baseline_c' / '基线C_方案E'
+        bad = [c for c, s in fz['code_sha256'].items() if not (SNAP / c).is_file() or sha(SNAP / c) != s]
+        bad += [c for c, s in fz['code_sha256'].items() if c.endswith('.py') and sha(ROOT / c) != s]
+        if yaml.safe_load((ROOT / 'config.yaml').read_text(encoding='utf-8'))['postprocess'] != yaml.safe_load((SNAP / 'config.yaml').read_text(encoding='utf-8'))['postprocess']:
+            bad.append('config.yaml（postprocess 段与冻结快照不同）')
     assert not bad, f'方案E 冻结代码被改：{bad}'
     v = yaml.safe_load(COMBO.read_text(encoding='utf-8'))['方案E']['variant']
     assert v == fz['variant'] == EXPECTED, '方案E 组合开关与冻结不同'
@@ -103,8 +130,8 @@ def ledger():
     return {'units': units, 'detail': u, 'failed_calls': fails, 'cny_estimate': cny, 'cny_total': round(sum(cny.values()), 3)}
 
 
-CAPW = str(NB / 'capwrap.py')
-sys.path.insert(0, str(NB)); import stoprule as SR
+CAPW = str(HERE / 'capwrap.py')
+sys.path.insert(0, str(HERE)); import stoprule as SR
 STOPF = OUT / '停止.json'
 def stop_check(name, out=None, text=''):
     """每步前后：有停止标记、或该步输出里有额度/权限/未开通类错误（不论退出码），立即结束整条流水线。"""
@@ -126,7 +153,7 @@ def actual_units():
 def guard(name, expect):
     stop_check(name)
     if ROUTE not in RC['估算']: sys.exit(f'{name}：未指定或未知路线 SWISS_ROUTE={ROUTE!r}，不调用')
-    if n_pages() > PAGE_CAP: sys.exit(f'{name}：输入 {n_pages()} 页超过页上限 {PAGE_CAP}，不调用')
+    if n_pages() > _page_cap(): sys.exit(f'{name}：输入 {n_pages()} 页超过页上限 {_page_cap()}，不调用')
     # 江苏留出：按 donghao 要求，每步只按「已用实际单位＋1」对比上限放行；每次真实调用再由 capwrap.py 逐次把关（竖排按实际次数计）
     led = ledger(); led['units'] = max(led['units'], actual_units()); expect = 1
     if led['units'] + expect > CAP:
@@ -196,8 +223,8 @@ def baidu(a):
     verify(); _, s = live_cfg()
     pdf = s['scan_pdf']; p2 = OUT / 'P2' / 'blind30-P2.pdf'
     assert sha(p2) == jl(OUT / 'P2' / 'prep.json')['p2_pdf_sha256']
-    n = n_pages(); call_a = str(NB / 'scheme_a_call.py')
-    if n > PAGE_CAP: sys.exit(f'输入 {n} 页超过页上限 {PAGE_CAP}，不调用')
+    n = n_pages(); call_a = str(HERE / 'scheme_a_call.py')
+    if n > _page_cap(): sys.exit(f'输入 {n} 页超过页上限 {_page_cap()}，不调用')
     if ROUTE not in RC['估算']: sys.exit(f'未指定或未知路线 SWISS_ROUTE={ROUTE!r}')
     ud = u_dir()
     # 上次 282005 失败留下的无限量识别目录（没有 parse_result）先存档，避免误判为已完成或被旧错误挡住
@@ -240,6 +267,10 @@ def u_path(): return u_dir() / 'raw' / 'blind20-scan.parse_result.json'
 def build(a):
     verify()
     if ROUTE not in RC['估算']: sys.exit('build：未指定路线 SWISS_ROUTE')
+    LP.require_file(WO / 'output' / 'scheme_a' / 'call_summary.json', '原图高精度缓存 scheme_a/call_summary.json', LP.ENV_RUN_ISO)
+    for _d in dict.fromkeys([WO / 'output' / 'scheme_b_standard', u_dir()]):
+        if not any((_d / 'raw').glob('*.parse_result.json')):
+            raise LP.MissingInputError(f'缺少文档解析识别缓存：{_d}/raw/*.parse_result.json。请先在确认费用后生成识别缓存（不会自动调用百度）。')
     import synth18_run as S
     bm = S.load_mod('blind20_build', ROOT / 'scripts' / 'blind20_build.py')
     for d in dict.fromkeys([WO / 'output' / 'scheme_b_standard', u_dir()]):
@@ -352,7 +383,11 @@ if __name__ == '__main__':
     ap.add_argument('cmd', choices=['verify', 'check', 'prep', 'baidu', 'build', 'reread', 'vert', 'score', 'ledger', 'upath'])
     ap.add_argument('--live', action='store_true')
     a = ap.parse_args()
-    if a.cmd == 'verify': print('校验通过', verify())
-    elif a.cmd == 'ledger': print(json.dumps(ledger(), ensure_ascii=False, indent=1))
-    elif a.cmd == 'upath': print(u_path())
-    else: globals()[a.cmd](a)
+    try:   # 缺运行隔离目录、配置或识别缓存时：中文报错、退出码 1，不写成绩
+        LP.run_iso(required=True)
+        if a.cmd == 'verify': print('校验通过', verify())
+        elif a.cmd == 'ledger': print(json.dumps(ledger(), ensure_ascii=False, indent=1))
+        elif a.cmd == 'upath': print(u_path())
+        else: globals()[a.cmd](a)
+    except LP.MissingInputError as e:
+        print(e, file=sys.stderr); sys.exit(1)

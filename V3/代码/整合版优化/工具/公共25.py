@@ -63,7 +63,9 @@ def __getattr__(name):
     raise AttributeError(name)
 
 def _G(name):
-    return __getattr__(name)
+    # 调用方（如 公共v3._set8、新扫描9页）会直接给本模块设置 REF_DIR、页表 等属性；已设置时用设置值（与原脚本相同），未设置时才按默认数据根延迟取值。
+    g = globals()
+    return g[name] if name in g else __getattr__(name)
 
 def post(pg, sa, logs=None, pid=None):
     """末端后处理：改动4 → 改动3 → 改动2（与候选路线_v2 相同）。sa：该页输出所用的 scheme_a 坐标目录。"""

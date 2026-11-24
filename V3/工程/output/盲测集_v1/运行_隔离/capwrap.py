@@ -16,11 +16,18 @@ for _k in ('BAIDU_OCR_API_KEY', 'BAIDU_OCR_SECRET_KEY'):
         os.environ[_k] = os.environ[_k].rstrip()
 NET_RETRIES = 3
 NET_SLEEP = (2, 5, 10)
-sys.path[:0] = [str(HERE), '/workspace/pdf-test/baidu/src', '/workspace/pdf-test/baidu/scripts']
+# 【仓库副本：只改路径】代码根＝仓库根；恢复配置.json 与 运行/ 在本份材料的运行隔离目录（OCR_RUN_ISO）。
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+ISO = LP.run_iso(required=True)
+sys.path[:0] = [str(HERE), str(LP.repo_root() / 'src'), str(LP.repo_root() / 'scripts')]
 import stoprule as SR
-RC = json.load(open(os.environ.get('SWISS_TEST_RC') or HERE / '恢复配置.json'))   # SWISS_TEST_RC 只给离线模拟测试用
+RC = json.load(open(os.environ.get('SWISS_TEST_RC') or ISO / '恢复配置.json'))   # SWISS_TEST_RC 只给离线模拟测试用
 ROUTE = os.environ.get('SWISS_ROUTE', '')
-RUN = Path(os.environ.get('SWISS_STOP_TEST_DIR') or HERE / '运行')   # 环境变量只给离线模拟测试用
+RUN = Path(os.environ.get('SWISS_STOP_TEST_DIR') or ISO / '运行')   # 环境变量只给离线模拟测试用
 LED = RUN / '恢复账本.json'; STOPF = RUN / '停止.json'
 PAGE_CAP = int(RC['页上限'])
 def caps():

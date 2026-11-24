@@ -28,6 +28,8 @@ MODULES = [
     "fuse_vertical", "frozen_stack3",
     "公共25", "公共65", "公共v3", "v5规则", "公共v6", "评分", "新扫描9页",
     "整合框架",
+    # 上游生成（第六轮新版、整合版）：只导入，不运行
+    "第六轮规则", "公共", "run_30", "stoprule", "scheme_a_call",
 ]
 
 def _ok_path(p: Path) -> bool:
