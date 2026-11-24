@@ -8,11 +8,17 @@ combo：逗号分隔的步骤开关，如 1,4,2（默认 1,4,2）。不读参照
 import json, os, subprocess, sys
 from pathlib import Path
 HERE = Path(__file__).resolve().parent
-ROOT = Path('/workspace/pdf-test/baidu')
+# 【仓库副本：只改路径】原 ROOT 为试验机 baidu 根（代码根），仓库中对应仓库根；冻结规则副本在 rules/baseline_c。
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as _LPATHS
+ROOT = _LPATHS.repo_root()
 M = Path(os.environ.get('R5_MODS', str(HERE)))   # 冻结后指向冻结目录
-sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'scripts'), str(M), str(ROOT / 'output/盲测_版面约束/冻结规则')]
-PY = str(ROOT / '.venv/bin/python')
-STACK3 = os.environ.get('R5_STACK3', str(ROOT / 'output/盲测_版面约束/版面分析优化计划/试算/第3轮/冻结/frozen_stack3.py'))
+sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'scripts'), str(M), str(ROOT / 'rules/baseline_c')]
+PY = _LPATHS.lab_python()
+STACK3 = os.environ.get('R5_STACK3', str(HERE.parent / 'round3/frozen_stack3.py'))
 def main(C, sa_o, sa_p2, pdf, name, ld, doc, rd, rr, out, combo='1,4,2'):
     st = set(combo.split(','))
     sa = sa_p2 if '1' in st else sa_o

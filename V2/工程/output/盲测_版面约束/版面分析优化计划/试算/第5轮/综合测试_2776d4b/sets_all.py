@@ -7,6 +7,11 @@ for _k in range(1, 9):
         _sys.path.insert(0, str(_s)); break
 import ocr_lab_paths as LP
 O = LP.baidu_root_path() / 'output'; TS = O / '盲测_版面约束/版面分析优化计划/试算'; HERE = Path(__file__).resolve().parent
+# 【仓库副本：只改路径】synth18/18c/18d 的基线C 输入原在本目录 输入/（试验机上的同名目录）。仓库不带数据：
+# 可用环境变量 OCR_V2_SETS_INPUT 指定；未设置且本目录无 输入/ 时，用 $OCR_BAIDU_ROOT 下原试验机的同一目录。只算路径，导入时不读数据。
+import os as _os
+_IN = Path(_os.environ['OCR_V2_SETS_INPUT']) if _os.environ.get('OCR_V2_SETS_INPUT', '').strip() else (
+    HERE / '输入' if (HERE / '输入').is_dir() else TS / '第5轮/综合测试_2776d4b/输入')
 def run_set(R, name, pdf, ref, C=None):
     return dict(name=name, C=str(C or R / 'pred_C.json'), sa_o=str(R / 'orig/work/output/scheme_a'), sa_p2=str(R / 'P2/work/output/scheme_a'), pdf=str(pdf),
                 doc=str(R / 'orig/work/output/final/scheme_b_standard/blind20-scan.json'), rd=str(R / 'orig/work/output/scheme_a/renders'),
@@ -15,13 +20,13 @@ I, J, K, L = TS / '第2轮/新盲测_i/运行_i', TS / '第3轮/新盲测_j/运�
 SETS = {
  'synth18f': {**run_set(O / 'synth18f', 'synth18f', str(LP.pdf_test_root_path() / 'synth18f/synth18f-scan.pdf'), str(LP.pdf_test_root_path() / 'synth18f'), C=TS / '第3轮/正式计分_18f/pred_C.json'),
               'r3_hist': TS / '第3轮/正式计分_18f/pred_R3.json', 'lines_src': TS / '第5轮/整合路线/开发/线缓存_18f', 'grp': '开发集'},
- 'synth18': dict(name='synth18', C=str(HERE / '输入/C_synth18.json'), sa_o=str(O / 'synth18/work/output/scheme_a'), sa_p2=str(O / 'synth18_opt2/P2/work/output/scheme_a'),
+ 'synth18': dict(name='synth18', C=str(_IN / 'C_synth18.json'), sa_o=str(O / 'synth18/work/output/scheme_a'), sa_p2=str(O / 'synth18_opt2/P2/work/output/scheme_a'),
                  pdf=str(LP.pdf_test_root_path() / 'synth18/synth18-scan.pdf'), doc=str(O / 'synth18/work/output/final/scheme_b_standard/blind20-scan.json'),
                  rd=str(O / 'synth18/work/output/scheme_a/renders'), rr=str(O / 'synth18_opt2/reread/A_P2/results.json'), ref=str(LP.pdf_test_root_path() / 'synth18'),
                  r3_hist=TS / '第3轮/dev/结果/全部3_synth18_pred.json', lines_src=TS / '表格线缓存', grp='开发集'),
- 'synth18c': {**run_set(O / 'synth18c', 'synth18c', str(LP.pdf_test_root_path() / 'synth18c/synth18c-scan.pdf'), str(LP.pdf_test_root_path() / 'synth18c'), C=HERE / '输入/C_synth18c.json'),
+ 'synth18c': {**run_set(O / 'synth18c', 'synth18c', str(LP.pdf_test_root_path() / 'synth18c/synth18c-scan.pdf'), str(LP.pdf_test_root_path() / 'synth18c'), C=_IN / 'C_synth18c.json'),
               'r3_hist': TS / '第3轮/dev/结果/全部3_synth18c_pred.json', 'lines_src': TS / '表格线缓存', 'grp': '开发集'},
- 'synth18d': {**run_set(O / 'synth18d', 'synth18d', str(LP.pdf_test_root_path() / 'synth18d/synth18d-scan.pdf'), str(LP.pdf_test_root_path() / 'synth18d'), C=HERE / '输入/C_synth18d.json'),
+ 'synth18d': {**run_set(O / 'synth18d', 'synth18d', str(LP.pdf_test_root_path() / 'synth18d/synth18d-scan.pdf'), str(LP.pdf_test_root_path() / 'synth18d'), C=_IN / 'C_synth18d.json'),
               'r3_hist': TS / '第3轮/dev/结果/全部3_synth18d_pred.json', 'lines_src': TS / '表格线缓存', 'grp': '开发集'},
  'synth_blind_i': {**run_set(I, 'synth_blind_i', TS / '第2轮/新盲测_i/synth_blind_i/synth_blind_i-scan.pdf', TS / '第2轮/新盲测_i/synth_blind_i'),
                    'r3_hist': None, 'lines_src': I / '表格线缓存_R2', 'grp': '盲测集'},

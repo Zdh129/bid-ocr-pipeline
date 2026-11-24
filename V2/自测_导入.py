@@ -8,6 +8,7 @@ import importlib, sys
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE))   # 复跑_第三版、出结果_新材料 在本目录
 REPO = HERE.parent
 DENY = Path("/workspace/pdf-test")
 
@@ -19,6 +20,7 @@ MODULES = [
     "baidu_ocr.score",
     "route5", "tablerow",
     "fuse_vertical", "frozen_stack3",
+    "复跑_第三版", "出结果_新材料",
 ]
 
 def ok(p: Path) -> bool:

@@ -6,7 +6,7 @@
   3 页面类型标签（杨工 classify 思路）写进每页的 meta 字段和 元数据/，不改正文。
   4 缓存核对：按新键（图片 sha256＋接口＋参数哈希）给现有缓存建只读索引并逐条校验；整条路线所需的主识别结果全部能按新键命中。
   5 计分（原参照）：主口径 tolerant_score、严格口径 score_system；与候选路线第二版逐字比对正文、逐页找退步；另加「不计顺序」口径。
-用法：bash 复跑.sh [数据集 ...]"""
+用法：bash 复跑.sh [数据集 ...]；或 OCR_V2_SETS=测试样本A,江苏 bash 复跑.sh（参数优先）。新材料（无参照、不计分）用 出结果_新材料.py / 新材料_端到端.sh。"""
 import copy, hashlib, json, os, socket, subprocess, sys
 from collections import Counter
 from pathlib import Path
@@ -193,7 +193,9 @@ def _require_official(names):
 
 def main(argv=None):
     argv = list(argv or sys.argv)
-    ONLY = argv[1:] or ['测试样本A'] + list(SA.SETS) + ['江苏']
+    # 【仓库副本：只改入口】数据集可由命令行参数或环境变量 OCR_V2_SETS（逗号分隔）指定；都不给时与原来相同，跑全部数据集。
+    env_sets = [x.strip() for x in os.environ.get('OCR_V2_SETS', '').split(',') if x.strip()]
+    ONLY = argv[1:] or env_sets or ['测试样本A'] + list(SA.SETS) + ['江苏']
     VARS = {'按配置': CFG}
     _require_official(ONLY)
     for d in ('中间', '预测', '元数据', '成绩', '日志'): (H / d).mkdir(exist_ok=True)

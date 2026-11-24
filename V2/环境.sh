@@ -23,7 +23,7 @@ _PATHS=(
   "$_REPO/scripts"
 )
 _JOIN="$(IFS=:; echo "${_PATHS[*]}")"
-export PYTHONPATH="${_JOIN}${PYTHONPATH:+:}$PYTHONPATH"
+export PYTHONPATH="${_JOIN}${PYTHONPATH:+:}${PYTHONPATH:-}"
 export R5_MODS="$_V2_HERE/路线代码/rules/round5"
 export R5_STACK3="$_V2_HERE/路线代码/rules/round3/frozen_stack3.py"
 export M6_LAB_ROOT="$_ENG"
