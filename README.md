@@ -119,10 +119,35 @@ python scripts/run_scheme_b.py --config config.yaml --input data/<集名>/<集�
 
 历史试验脚本（含原试验机路径，供对照，不作为推荐入口）在 `scripts/history/`。方案E 组合开关见 `config_方案E.yaml`。调用百度前可用 `scripts/ready_check_方案E.py` 对照冻结清单。
 
+### V2、V3 快照怎么跑
+
+V2、V3 都是候选快照，尚未切换主路径。现有说明中的版本仍是 V2。离线完整复跑需要本地识别缓存，仓库不提供 PDF、参照或缓存。
+
+```bash
+# V3（优化成本），候选版、未独立验证
+source V3/环境.sh
+bash V3/复跑.sh                  # 先做导入自测与规则干跑；有缓存再完整复跑
+python3 V3/跑新材料.py --pred 预测.json --scheme-a scheme_a目录 --out 结果.json
+
+# V2：先补齐依赖路径，再按该目录说明离线复跑
+source V2/环境.sh
+bash V2/复跑_仓库.sh             # 只做导入自测
+# 有本地缓存时再用原入口：bash V2/复跑.sh
+```
+
+从零跑一份新材料：先按上文生成 scheme_a 等缓存（调用百度前确认费用；密钥只用 `BAIDU_OCR_API_KEY` / `BAIDU_OCR_SECRET_KEY`，或别名 `BAIDU_API_KEY` / `BAIDU_SECRET_KEY`），再运行对应版本的离线入口。
+
 ## 如何计分
 
 - **主口径**：`scripts/tolerant_score.py`（容忍页边竖排、表头带配对、印章抽出等约定，不改参照文件）
 - **严格口径**：`scripts/blind20_score.py` 中的 `score_system`（逐页拼接后做 Levenshtein 对齐）
+
+各版本读出率公式所在的文件和函数如下，便于统一口径。这里只写公式位置，不写成绩。
+
+- **底层（各版本对齐都用到）**：`src/baidu_ocr/score.py` 的 `score_text`。读出率 = 对齐后匹配的参照字符数 / 参照字符数。
+- **V1**（根目录第3轮计分入口）：`scripts/tolerant_score.py` 的 `score_tolerant`（主口径）、`scripts/blind20_score.py` 的 `score_system`（严格口径）。包装脚本 `scoring/score_once.py` 的 `_fmt` 另用「（参照字数 − 删除）/ 参照字数」计算读出率，与底层 `score_text` 的「匹配字数 / 参照字数」不同，对照时要注意。
+- **V2**：`V2/复跑_第三版.py` 中的 `rate`（读出率 = 匹配字数 / 参照字数）。补进仓库的 `V2/工程/output/博凯_清零/工具/计分.py` 里同名 `rate` 与此相同。主、严口径同样分别来自 `score_tolerant` 与 `score_system`。
+- **V3**：`V3/工程/output/博凯_清零/工具/计分.py` 的 `rate`，以及 `V3/工程/output/整合版_裸高精度底座/工具/整合框架.py` 的 `agg`（读出率 = 匹配字数 / 参照字数）。主、严口径来源与 V2 相同。
 
 ```bash
 python -m pipeline score \
