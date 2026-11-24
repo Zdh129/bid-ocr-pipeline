@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """导入 V2 复跑所需、先前缺失的模块，并检查模块文件都在本仓库内。
-不读测试集、不调百度。不导入会做网络检查或整树冻结校验的 复跑_第三版.py。
+不读测试集、不调百度。路径与依赖加载已改为用到时再读数据；原机检查默认跳过。
 用法：先 source 环境.sh，再 python3 自测_导入.py
 """
 from __future__ import annotations
@@ -18,6 +18,7 @@ MODULES = [
     "tolerant_score", "blind20_score", "synth18b_score",
     "baidu_ocr.score",
     "route5", "tablerow",
+    "fuse_vertical", "frozen_stack3",
 ]
 
 def ok(p: Path) -> bool:

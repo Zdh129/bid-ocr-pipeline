@@ -4,24 +4,56 @@ import sys, json, hashlib
 from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).parent))
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
 import 公共v3 as V
 NEW = V.V / '新扫描9页_运行隔离'; RUN = NEW / '运行'; REF = NEW / '参照草稿'
 P4 = V.V / 'v4冻结/v4参数.json'
 assert hashlib.sha256(P4.read_bytes()).hexdigest() == '52729ec5745fa20808d73c97b3a7e8cf63895c2e5ccb792c0cfe0b663f097284'
+# 代码 sha：未改文件仍对照冻结清单；只修了路径/加载的文件对照修复后 sha（见仓库 修复说明.md）。
+_FIX_SHA = {'v3优化/工具/公共v3.py': '2ea412c9bd7db1a74985a2cc626cf7a50bac292bcc7c6421bcb5491960c2693e'}
 for f, h in json.load(open(P4))['代码sha256'].items():
-    assert hashlib.sha256((V.H / f).resolve().read_bytes()).hexdigest() == h, f
+    got = hashlib.sha256((V.H / f).resolve().read_bytes()).hexdigest()
+    if got == h or got == _FIX_SHA.get(f):
+        continue
+    raise AssertionError(f)
 PAR = json.load(open(P4))['参数']
-单 = {p['新页号']: p for p in json.load(open(NEW / '清单.json'))['页']}
-C9 = V._mod('C9', V.H / '工具/公共25.py')
-C9.REF_DIR = REF; C9.页表 = {q: {'版式': 单[q]['版式_旧表']} for q in 单}; C9.SCORED = sorted(单)
-sa_o, sa_p2 = RUN / 'orig/work/output/scheme_a', RUN / 'P2/work/output/scheme_a'
-DOC = json.load(open(RUN / 'orig/work/output/final/scheme_b_standard/pred_pages.json'))
-six = json.load(open(NEW / '识别结果/第六轮新版.json')); integ = json.load(open(NEW / '识别结果/整合版.json'))
-V.SETS['新9'] = [dict(k=str(p), q=p, integ=integ[str(p)], six=six[str(p)], sa_o=sa_o, sa_p2=sa_p2, doc=DOC.get(str(p))) for p in 单]
+_loaded = False
+
+def _data_dir():
+    if (NEW / '清单.json').is_file():
+        return NEW
+    lab = LP.baidu_root(required=True) / 'output/分流整合版/整合版优化/v3优化/新扫描9页_运行隔离'
+    return LP.require_dir(lab, '新扫描9 数据目录', LP.ENV_BAIDU)
+
+def _load():
+    global 单, C9, sa_o, sa_p2, DOC, six, integ, NEW, RUN, REF, _loaded
+    if _loaded:
+        return
+    NEW = _data_dir(); RUN = NEW / '运行'; REF = NEW / '参照草稿'
+    单 = {p['新页号']: p for p in LP.load_json(NEW / '清单.json', '新扫描9 清单.json', LP.ENV_BAIDU)['页']}
+    C9 = V._mod('C9', V.H / '工具/公共25.py')
+    C9.REF_DIR = REF; C9.页表 = {q: {'版式': 单[q]['版式_旧表']} for q in 单}; C9.SCORED = sorted(单)
+    sa_o, sa_p2 = RUN / 'orig/work/output/scheme_a', RUN / 'P2/work/output/scheme_a'
+    DOC = LP.load_json(RUN / 'orig/work/output/final/scheme_b_standard/pred_pages.json', '新扫描9 pred_pages.json', LP.ENV_BAIDU)
+    six = LP.load_json(NEW / '识别结果/第六轮新版.json', '新扫描9 识别结果 第六轮新版.json', LP.ENV_BAIDU)
+    integ = LP.load_json(NEW / '识别结果/整合版.json', '新扫描9 识别结果 整合版.json', LP.ENV_BAIDU)
+    V.SETS['新9'] = [dict(k=str(p), q=p, integ=integ[str(p)], six=six[str(p)], sa_o=sa_o, sa_p2=sa_p2, doc=DOC.get(str(p))) for p in 单]
+    _loaded = True
+
+def __getattr__(name):
+    if name in ('单', 'C9', 'sa_o', 'sa_p2', 'DOC', 'six', 'integ'):
+        _load(); return globals()[name]
+    raise AttributeError(name)
+
 _orig_score = V.score
 def txt(pg): return '\n'.join(s['text'] for s in pg['sections'])
 
 def predict():
+    _load()
     pm4, rt4 = V.run('新9', lambda d: V.v3(d, **PAR)); pmc, _ = V.run('新9', V.cand_v2)
     (V.V / '预测').mkdir(exist_ok=True)
     json.dump(pm4, open(V.V / '预测/新扫描9_整合版_v4冻结.json', 'w'), ensure_ascii=False, indent=1)
@@ -34,6 +66,7 @@ def predict():
     print({k: (v['路线'], v['并排行比例']) for k, v in json.load(open(V.V / '预测/新扫描9_v4路线.json')).items()})
 
 def score_all():
+    _load()
     pm4 = json.load(open(V.V / '预测/新扫描9_整合版_v4冻结.json')); pmc = json.load(open(V.V / '预测/新扫描9_候选路线_v2.json'))
     rt = json.load(open(V.V / '预测/新扫描9_v4路线.json'))
     # 逐页：用 C9 计分（借用 V.batch 的“新集8”分支，换成 C9）
@@ -57,4 +90,9 @@ def score_all():
     json.dump(out, open(V.V / '成绩/新扫描9页.json', 'w'), ensure_ascii=False, indent=1)
     print(json.dumps(out, ensure_ascii=False, indent=1))
 
-{'预测': predict, '计分': score_all}[sys.argv[1]]()
+def main():
+    _load()
+    {'预测': predict, '计分': score_all}[sys.argv[1]]()
+
+if __name__ == '__main__':
+    main()

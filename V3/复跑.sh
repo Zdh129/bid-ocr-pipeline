@@ -24,26 +24,21 @@ fi
 "$PY" "$HERE/自测_导入.py"
 "$PY" "$HERE/干跑_规则样例.py"
 
-ORIG="/workspace/pdf-test/baidu/output/分流整合版/整合版优化/v3优化/v6探索"
-if [[ ! -f "$ORIG/v6候选冻结/v6参数.json" ]]; then
-  echo "未找到原始试验环境中的缓存与冻结目录。导入自测和规则干跑已通过。"
-  echo "完整复跑（评分.py）需要本地识别缓存，本仓库不提供数据集或缓存。"
-  echo "从零跑一份新材料：先按仓库根 README 生成 scheme_a 缓存，再运行："
-  echo "  python3 $HERE/跑新材料.py --pred 预测.json --scheme-a scheme_a目录 --out 结果.json"
-  exit 0
-fi
-if ! cmp -s "$HERE/代码/整合版优化/v3优化/v6探索/v6候选冻结/v6参数.json" "$ORIG/v6候选冻结/v6参数.json"; then
-  echo "本地 v6 冻结参数与本快照不一致，已停下。未改文件，也未调用接口。" >&2
-  exit 1
-fi
-for v in $(env | cut -d= -f1 | grep -i baidu || true); do unset "$v"; done
+SCORE="$HERE/代码/整合版优化/v3优化/v6探索/工具/评分.py"
+for v in $(env | cut -d= -f1 | grep -i baidu | grep -v OCR_BAIDU_ROOT || true); do unset "$v"; done
 export PYTHONDONTWRITEBYTECODE=1
 SETS=("盲测25" "新集8" "65扫描" "新扫描9")
 if [[ $# -gt 0 ]]; then SETS=("$@"); fi
+# 正式入口：仓库副本的 评分.py。缺缓存或输入时由该入口明确报错，不写成绩。
+# 默认对照组合（与原 v6 组合成绩同一入口形态）。
 CMD=()
 for st in "${SETS[@]}"; do
-  CMD+=("$PY" "$ORIG/工具/评分.py" "$st" "1+5a" "github_v3" ";")
+  CMD+=("$PY" "$SCORE" "$st" "1+5a" "github_v3_fix" ";")
 done
-# 去掉最后一个分号
 unset "CMD[-1]"
-exec unshare -rn env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PYTHONPATH" R5_MODS="$R5_MODS" R5_STACK3="$R5_STACK3" M6_LAB_ROOT="$M6_LAB_ROOT" bash -c "${CMD[*]}"
+exec unshare -rn env PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONPATH="$PYTHONPATH" R5_MODS="$R5_MODS" R5_STACK3="$R5_STACK3" M6_LAB_ROOT="$M6_LAB_ROOT" \
+  V3_ROOT="$V3_ROOT" REPO_ROOT="$REPO_ROOT" \
+  OCR_BAIDU_ROOT="${OCR_BAIDU_ROOT:-}" OCR_PDF_TEST_ROOT="${OCR_PDF_TEST_ROOT:-}" \
+  OCR_LAB_CHECKS="${OCR_LAB_CHECKS:-}" \
+  bash -c "${CMD[*]}"

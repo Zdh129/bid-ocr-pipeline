@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """导入 V3 补齐后的规则与计分模块，并检查模块文件都在本仓库内。
-不读测试集、不调百度、不读参照。会跳过在 import 时就要读缓存或做网络/冻结校验的入口
-（公共v3、公共v6、评分、整合框架、复跑_第五轮 等）。
+不读测试集、不调百度、不读参照。路径与依赖加载已改为用到时再读数据。
 用法：先 source 环境.sh，再 python3 自测_导入.py
 """
 from __future__ import annotations
@@ -14,32 +13,21 @@ REPO = HERE.parent
 ALLOW = [HERE.resolve(), REPO.resolve()]
 DENY_PREFIXES = [Path("/workspace/pdf-test").resolve()]
 
-# 这些模块在 import 时会读测试集、缓存，或做网络/整树冻结校验，完整复跑需要本地缓存。
-# 本自测不导入它们。
-SKIP_REASON = {
-    "公共v3": "import 时加载测试集清单与缓存路径（冻结文件，未改）",
-    "公共v6": "依赖 公共v3",
-    "v5规则": "依赖 公共v3",
-    "新扫描9页": "import 时读清单.json",
-    "公共25": "import 时读测试集清单",
-    "公共65": "import 时读已有预测",
-    "整合框架": "import 时 exec 复跑_第五轮 头部（网络检查与原机冻结校验）",
-    "公共": "依赖 方法/框架 的试验机数据挂钩",
-    "方法": "import 时挂接开发集路径并依赖可选第三方库",
-}
-
+# 路径与数据改为用到时再加载；本自测只检查 import，不读测试集、不调百度、不写成绩。
 MODULES = [
     "规则v6", "旋转规则", "版面规则", "后处理_v2", "难页特征", "组合", "新规则",
     "phys_order", "layout_order", "table_title", "v3_layers",
     "规则", "规则_专项",
     "后处理",
     "sets_all", "计分",
-    # 比对.py 在 import 时读取测试集 清单.json，那是数据，未入库，本自测不导入
+    "比对",
     "baidu_ocr.score",
     "tolerant_score", "blind20_score",
     "layer1", "layer3", "dedup", "seal_rule", "eseal", "page_type", "baidu_cache",
     "route5", "tablerow",
-    # frozen_stack3 会经 fuse_vertical.py 在 import 时按原机路径加载 vertical_margin.py；完整底座需要本地冻结规则缓存，本自测不导入
+    "fuse_vertical", "frozen_stack3",
+    "公共25", "公共65", "公共v3", "v5规则", "公共v6", "评分", "新扫描9页",
+    "整合框架",
 ]
 
 def _ok_path(p: Path) -> bool:

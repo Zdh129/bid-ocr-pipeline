@@ -6,13 +6,31 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 X = Path(__file__).resolve().parents[1]; T = X.parent / '工具'
 sys.path[:0] = [str(Path(__file__).parent), str(T)]
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
 F5 = X.parent / '整合版_v5冻结/v5参数.json'
 assert hashlib.sha256(F5.read_bytes()).hexdigest() == '4b53d049c9b6a678fb46400faf6f40862d5b3d6a082e0749c705b0c8942a4122'
 C5 = json.load(open(F5))
-for f, h in C5['代码sha256'].items(): assert hashlib.sha256((X.parents[1] / f).resolve().read_bytes()).hexdigest() == h, f
-src = (T / '新扫描9页.py').read_text(encoding='utf-8').replace("{'预测': predict, '计分': score_all}[sys.argv[1]]()", '')
-N9 = type(sys)('N9'); N9.__file__ = str(T / '新扫描9页.py'); exec(compile(src, N9.__file__, 'exec'), N9.__dict__)
-V = N9.V
+# 代码 sha：未改文件仍对照冻结清单；只修了路径/加载的文件对照修复后 sha（见仓库 修复说明.md）。
+_FIX_SHA = {'v3优化/工具/公共v3.py': '2ea412c9bd7db1a74985a2cc626cf7a50bac292bcc7c6421bcb5491960c2693e'}
+for f, h in C5['代码sha256'].items():
+    got = hashlib.sha256((X.parents[1] / f).resolve().read_bytes()).hexdigest()
+    if got == h or got == _FIX_SHA.get(f):
+        continue
+    raise AssertionError(f'{f} sha256 {got} 既不是原冻结也不是修复后记录')
+import 公共v3 as V
+N9 = None
+def _n9():
+    """用到新扫描9 时再加载该集数据。"""
+    global N9
+    if N9 is None:
+        import 新扫描9页 as _n9mod
+        _n9mod._load()
+        N9 = _n9mod
+    return N9
 import v5规则 as F
 assert F.V is V
 import 规则v6 as G

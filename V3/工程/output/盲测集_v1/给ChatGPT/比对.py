@@ -15,20 +15,56 @@ from collections import Counter
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parent  # 盲测集_v1
-BAIDU = Path('/workspace/pdf-test/baidu')
-sys.path[:0] = [str(BAIDU / 'src'), str(BAIDU / 'scripts')]
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+sys.path[:0] = [str(LP.repo_root() / 'src'), str(LP.repo_root() / 'scripts')]
 sys.dont_write_bytecode = True
 
-清单 = json.load(open(ROOT / '清单.json'))
-图片清单 = json.load(open(HERE / '图片清单.json'))
-页表 = {p['盲测页号']: p for p in 清单['页']}
-图名 = {p['盲测页号']: p['图片文件名'] for p in 图片清单['页']}
-名到页 = {p['图片文件名']: p['盲测页号'] for p in 图片清单['页']}
-名到页.update({Path(n).stem: i for n, i in {p['图片文件名']: p['盲测页号'] for p in 图片清单['页']}.items()})
+_清单 = _图片清单 = _页表 = _图名 = _名到页 = None
+_ROOT = None
 
-结果目录候选 = [HERE / 'ChatGPT结果', ROOT / 'ChatGPT结果', Path.cwd() / 'ChatGPT结果']
-识别目录候选 = [ROOT / '识别结果', HERE / '识别结果']
+def _data_root():
+    global _ROOT
+    if _ROOT is None:
+        r = LP.baidu_root(required=True) / 'output' / '盲测集_v1'
+        _ROOT = LP.require_dir(r, '盲测集_v1 数据目录', LP.ENV_BAIDU)
+    return _ROOT
+
+def _ensure_lists():
+    global _清单, _图片清单, _页表, _图名, _名到页
+    if _清单 is not None:
+        return
+    root = _data_root()
+    _清单 = LP.load_json(root / '清单.json', '盲测集清单 清单.json', LP.ENV_BAIDU)
+    imgf = HERE / '图片清单.json'
+    if not imgf.is_file():
+        imgf = root / '给ChatGPT' / '图片清单.json'
+    _图片清单 = LP.load_json(imgf, '图片清单.json', LP.ENV_BAIDU)
+    _页表 = {p['盲测页号']: p for p in _清单['页']}
+    _图名 = {p['盲测页号']: p['图片文件名'] for p in _图片清单['页']}
+    _名到页 = {p['图片文件名']: p['盲测页号'] for p in _图片清单['页']}
+    _名到页.update({Path(n).stem: i for n, i in {p['图片文件名']: p['盲测页号'] for p in _图片清单['页']}.items()})
+
+def __getattr__(name):
+    if name == 'ROOT':
+        return _data_root()
+    if name == 'BAIDU':
+        return LP.baidu_root(required=True)
+    if name in ('清单', '图片清单', '页表', '图名', '名到页'):
+        _ensure_lists()
+        return {'清单': _清单, '图片清单': _图片清单, '页表': _页表, '图名': _图名, '名到页': _名到页}[name]
+    raise AttributeError(name)
+
+def _G(name):
+    return __getattr__(name)
+
+def _结果目录候选():
+    return [HERE / 'ChatGPT结果', _data_root() / 'ChatGPT结果', Path.cwd() / 'ChatGPT结果']
+def _识别目录候选():
+    return [_data_root() / '识别结果', HERE / '识别结果']
 
 SEAL_RE = re.compile(r'【印章[:：](.*?)】')
 FENCE_RE = re.compile(r'^```(?:\w+)?\s*$')
@@ -74,7 +110,7 @@ def parse_page_text(raw: str, expect_name: str | None = None) -> dict:
         stems = set()
         if expect_name:
             stems.update({expect_name, Path(expect_name).stem, Path(expect_name).name})
-        if first in stems or first in 名到页 or Path(first).stem in 名到页:
+        if first in stems or first in _G("名到页") or Path(first).stem in _G("名到页"):
             lines = lines[1:]
     body, seals = [], []
     for ln in lines:
@@ -114,11 +150,11 @@ def split_combined(raw: str) -> dict[int, str]:
         name = None
         if t.startswith('=====') and t.endswith('====='):
             name = t.strip('=').strip()
-        elif t in 名到页 or Path(t).stem in 名到页 or t in {图名[i] for i in 图名}:
+        elif t in _G("名到页") or Path(t).stem in _G("名到页") or t in {_G("图名")[i] for i in _G("图名")}:
             name = t
         if name:
-            key = name if name in 名到页 else (name if name in 图名.values() else Path(name).stem)
-            pid = 名到页.get(key) or 名到页.get(Path(key).stem)
+            key = name if name in _G("名到页") else (name if name in _G("图名").values() else Path(name).stem)
+            pid = _G("名到页").get(key) or _G("名到页").get(Path(key).stem)
             if pid:
                 flush()
                 cur = pid
@@ -130,7 +166,7 @@ def split_combined(raw: str) -> dict[int, str]:
 
 
 def load_chatgpt():
-    d = find_dir(结果目录候选)
+    d = find_dir(_结果目录候选())
     got = {}
     sources = {}
     if not d.exists():
@@ -141,13 +177,13 @@ def load_chatgpt():
             continue
         raw = f.read_text(encoding='utf-8', errors='replace')
         parts = split_combined(raw)
-        if len(parts) >= 2 or (len(parts) == 1 and Path(f.stem) not in [Path(图名[i]).stem for i in parts]):
+        if len(parts) >= 2 or (len(parts) == 1 and Path(f.stem) not in [Path(_G("图名")[i]).stem for i in parts]):
             for pid, body in parts.items():
                 if pid not in got:
-                    got[pid] = parse_page_text(body, 图名[pid])
+                    got[pid] = parse_page_text(body, _G("图名")[pid])
                     sources[pid] = str(f)
     # second pass: 同名.txt takes priority
-    for rec in 图片清单['页']:
+    for rec in _G("图片清单")['页']:
         pid, fn = rec['盲测页号'], rec['图片文件名']
         stem = Path(fn).stem
         for cand in (d / f'{stem}.txt', d / f'{fn}.txt', d / f'{stem}.md'):
@@ -160,7 +196,7 @@ def load_chatgpt():
 
 def load_json_preds(stem: str):
     names = [stem + '.json', stem.replace('新版', '') + '.json']
-    for folder in 识别目录候选:
+    for folder in _识别目录候选():
         if not folder.exists():
             continue
         for n in names:
@@ -236,7 +272,7 @@ def collect_preds():
     out = {'第六轮新版': {}, '整合版': {}, '分流版': {}}
     src = {'第六轮新版': sixth_src, '整合版': integ_src, '分流版': shunt_src}
     note = {'第六轮新版': {}, '整合版': {}, '分流版': {}}
-    for rec in 清单['页']:
+    for rec in _G("清单")['页']:
         pid = rec['盲测页号']
         cat = rec['分流类别']
         if as_pred(sixth.get(pid) or sixth.get(str(pid))):
@@ -268,7 +304,7 @@ def to_official_ref(chatgpt, pids):
     import blind20_score as bs
     refs, rj_pages, mp = {}, [], {}
     for pid in pids:
-        rec = 页表[pid]
+        rec = _G("页表")[pid]
         g = chatgpt[pid]
         lines = []
         ref_lines = []
@@ -340,7 +376,7 @@ def main():
 
     chatgpt, chat_src, chat_dir = load_chatgpt()
     preds, pred_src, pred_note = collect_preds()
-    all_ids = [p['盲测页号'] for p in 清单['页']]
+    all_ids = [p['盲测页号'] for p in _G("清单")['页']]
     missing_ref = [i for i in all_ids if i not in chatgpt or is_empty_ref(chatgpt[i])]
 
     lines = []
@@ -353,7 +389,7 @@ def main():
     w(f'ChatGPT 结果目录：{chat_dir}')
     w(f'已读到转写：{len(chatgpt)} / 42 页')
     if missing_ref:
-        w('尚未放入的参照页：' + '、'.join(f'{i:02d}({图名[i]})' for i in missing_ref))
+        w('尚未放入的参照页：' + '、'.join(f'{i:02d}({_G("图名")[i]})' for i in missing_ref))
         w('请把转写另存为 ChatGPT结果/<同名>.txt 后再跑。')
     w('')
 
@@ -390,7 +426,7 @@ def main():
         # 逐页一行
         for i in have:
             src = pred_note[route].get(i, '')
-            w(f"    第{i:02d}页 {图名[i]}  主错{sc['主']['逐页'][i]['错字']} 严错{sc['严']['逐页'][i]['错字']} 序错{sc['不计顺序']['逐页'][i]['错字']}  参照{sc['主']['逐页'][i]['参照字数']}字  {src}")
+            w(f"    第{i:02d}页 {_G("图名")[i]}  主错{sc['主']['逐页'][i]['错字']} 严错{sc['严']['逐页'][i]['错字']} 序错{sc['不计顺序']['逐页'][i]['错字']}  参照{sc['主']['逐页'][i]['参照字数']}字  {src}")
         report['路线'][route] = {
             '状态': '部分计分' if need else '已计分',
             '已计分页': have,
@@ -404,9 +440,9 @@ def main():
         w('')
 
     w('识别结果放置位置（有结果后再跑同一条命令即可）：')
-    w(f'  {ROOT / "识别结果" / "第六轮新版.json"}')
-    w(f'  {ROOT / "识别结果" / "整合版.json"}')
-    w(f'  {ROOT / "识别结果" / "分流版.json"}（可选；缺省时①′当场取文字层，④复用第六轮，④′/②′复用整合版）')
+    w(f'  {_G("ROOT") / "识别结果" / "第六轮新版.json"}')
+    w(f'  {_G("ROOT") / "识别结果" / "整合版.json"}')
+    w(f'  {_G("ROOT") / "识别结果" / "分流版.json"}（可选；缺省时①′当场取文字层，④复用第六轮，④′/②′复用整合版）')
     w('  文件格式：{"1": {"sections": [{"section": "body", "text": "…"}], "seal": ""}, …}，键为盲测页号。')
     w('参照来源一律视为「ChatGPT看图（未人工核对）」。')
 

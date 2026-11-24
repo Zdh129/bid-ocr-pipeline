@@ -1,4 +1,10 @@
 from pathlib import Path
+import sys
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
 
 def _dir(parent, preferred, must, must_not=()):
     """优先使用中性目录名；若不存在，则按子路径标记在同级目录中定位。
@@ -16,7 +22,7 @@ def _dir(parent, preferred, must, must_not=()):
             return hits[0]
     return pref
 
-O = Path('/workspace/pdf-test/baidu/output'); TS = O / '盲测_版面约束/版面分析优化计划/试算'
+O = LP.baidu_root_path() / 'output'; TS = O / '盲测_版面约束/版面分析优化计划/试算'
 BK = _dir(O, '测试样本A文件_最优路线测试',
           ['优化_第3轮/留出验证/冻结规则', '优化_第4轮/江苏留出'])
 BK_PACK = _dir(BK, '测试样本A包', ['输入/bk-scan.pdf', '参照'])

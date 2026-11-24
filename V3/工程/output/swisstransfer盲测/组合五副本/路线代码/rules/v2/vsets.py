@@ -1,5 +1,11 @@
 from pathlib import Path
-O = Path('/workspace/pdf-test/baidu/output'); TS = O / '盲测_版面约束/版面分析优化计划/试算'; BK = O / '博凯文件_最优路线测试'
+import sys
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+O = LP.baidu_root_path() / 'output'; TS = O / '盲测_版面约束/版面分析优化计划/试算'; BK = O / '博凯文件_最优路线测试'
 # 集名: (竖排结果, 渲染目录)
 VS = {
  'synth18': (O / 'f1_round2/synth18/vertical/results.json', O / 'synth18/work/output/scheme_a/renders'),

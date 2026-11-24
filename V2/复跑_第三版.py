@@ -11,28 +11,41 @@ import copy, hashlib, json, os, socket, subprocess, sys
 from collections import Counter
 from pathlib import Path
 sys.dont_write_bytecode = True
-H = Path(__file__).resolve().parent; ROOT = Path('/workspace/pdf-test/baidu'); O = ROOT / 'output'
-R = H / '路线代码/rules'; V2 = R / 'v2'; PY = str(ROOT / '.venv/bin/python')
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+H = Path(__file__).resolve().parent; ROOT = LP.baidu_root_path(); O = ROOT / 'output'
+R = H / '路线代码/rules'; V2 = R / 'v2'
+_py_lab = ROOT / '.venv/bin/python'
+PY = str(_py_lab) if _py_lab.is_file() else sys.executable
 sys.path.insert(0, str(V2))
 from vsets import BK, BK_PACK, BK_SOCIAL, TOOLS, TS, VS
 FZD = TS / '第5轮/当前最优_冻结_竖排门槛0.4'
 FR = BK / '优化_第3轮/留出验证/冻结规则'
 CFG = json.load(open(H / '配置_第三版.json')); V2D = O / '候选路线_第二版'; V3 = R / 'v3'
-# ---------- 0 安全检查 ----------
-assert not [k for k in os.environ if 'BAIDU' in k.upper()], '环境里还有百度变量'
-try:
-    socket.create_connection(('aip.baidubce.com', 443), timeout=3).close(); raise SystemExit('网络可达：请用 复跑.sh（unshare -rn）运行')
-except OSError:
-    pass
-assert subprocess.run(['sha256sum', '-c', '--quiet', '冻结_sha256.txt'], cwd=FZD).returncode == 0, '冻结副本被改'
-for line in (FR / '冻结_sha256.txt').read_text().splitlines():
-    h, f = line.split(None, 1); assert hashlib.sha256((FR / f.strip()).read_bytes()).hexdigest() == h, f'第3轮冻结规则被改：{f}'
-for f in ('layer1.py', 'layer3.py'):
-    assert (V2 / f).read_bytes() == (FR / f).read_bytes(), f'v2/{f} 与第3轮冻结规则不一致'
-sys.path[:0] = [str(V3), str(V2), str(TS / '第5轮/综合测试_2776d4b'), str(ROOT / 'src'), str(ROOT / 'scripts')]
+# ---------- 0 安全检查（原机冻结校验与断网检查：仅当 OCR_LAB_CHECKS=1 时执行） ----------
+def _lab_checks():
+    assert not [k for k in os.environ if 'BAIDU' in k.upper()], '环境里还有百度变量'
+    try:
+        socket.create_connection(('aip.baidubce.com', 443), timeout=3).close(); raise SystemExit('网络可达：请用 复跑.sh（unshare -rn）运行')
+    except OSError:
+        pass
+    assert subprocess.run(['sha256sum', '-c', '--quiet', '冻结_sha256.txt'], cwd=FZD).returncode == 0, '冻结副本被改'
+    for line in (FR / '冻结_sha256.txt').read_text().splitlines():
+        h, f = line.split(None, 1); assert hashlib.sha256((FR / f.strip()).read_bytes()).hexdigest() == h, f'第3轮冻结规则被改：{f}'
+    for f in ('layer1.py', 'layer3.py'):
+        assert (V2 / f).read_bytes() == (FR / f).read_bytes(), f'v2/{f} 与第3轮冻结规则不一致'
+if LP.lab_checks_enabled():
+    _lab_checks()
+else:
+    LP.skip_lab_checks_notice()
+sys.path[:0] = [str(V3), str(V2), str(LP.v2_root() / '工程/output/盲测_版面约束/版面分析优化计划/试算/第5轮/综合测试_2776d4b'), str(LP.repo_root() / 'src'), str(LP.repo_root() / 'scripts')]
 import sets_all as SA, synth18b_score as SB, tolerant_score as T
 import layer1, layer3, eseal, page_type, baidu_cache as BC
-import v3_layers as V3L; sys.path.insert(0, str(TOOLS / '工具')); import 计分 as S3
+import v3_layers as V3L
+sys.path.insert(0, str(LP.v2_root() / '工程/output/博凯_清零/工具')); import 计分 as S3
 from dedup import dedup; from seal_rule import clean
 # ---------- 数据集与输入段 ----------
 def _line_cache(tag):
@@ -156,44 +169,79 @@ def score(rd, pr):
             '严_逐页': {str(p): E(st['per_page'][p]['overall']) for p in pages}, '页类型': {str(p): mp[p]['doc_type'] for p in pages}}
 body = lambda pr: {p: ([(x['section'], x['text']) for x in v['sections']], v.get('seal') or '') for p, v in pr.items()}
 # ---------- 主流程 ----------
-ONLY = sys.argv[1:] or ['测试样本A'] + list(SA.SETS) + ['江苏']
-VARS = {'按配置': CFG}
-for d in ('中间', '预测', '元数据', '成绩', '日志'): (H / d).mkdir(exist_ok=True)
-summary = json.load(open(H / '汇总.json')) if (H / '汇总.json').exists() else {}
-summary['缓存核对'] = cache_check(list(DATA)); print('缓存核对', {k: v for k, v in summary['缓存核对'].items() if k != '失败明细'}, flush=True)
-assert summary['缓存核对']['校验失败'] == 0 and summary['缓存核对']['真实调用'] == 0
-for s in ONLY:
-    a = {}
-    for sg in DATA[s]:
-        a[sg['tag']] = base(sg, H / '中间')
-    res = {}; ref8_pred = ref8(s); r8 = score(REFS[s], ref8_pred)
-    for vn, cfg in VARS.items():
-        pred, logs, chk = {}, {}, {}
+
+def _require_official(names):
+    LP.baidu_root(required=True)
+    missing = []
+    for s in names:
+        if s not in DATA:
+            raise LP.MissingInputError(f'未知数据集：{s}。请设置 {LP.ENV_BAIDU} 并确认该集输入存在。')
         for sg in DATA[s]:
-            sub, lg = layers(a[sg['tag']], sg, cfg); logs[sg['tag']] = lg
-            for q, v in sub.items():
-                p = int(q) + sg['off']
-                if sg['keep'](int(q)):   # keep 按段内页号判断
-                    pred[str(p)] = v
-            for q, v in (lg.get('第三层核对') or {}).items(): chk[str(int(q) + sg['off'])] = v
-        pred = {p: pred[p] for p in sorted(pred, key=int)}
-        M = meta(pred, chk, cfg); full = {p: {**v, 'meta': M[p]} for p, v in pred.items()}
-        sc = score(REFS[s], pred)
-        reg = {k: sorted([p for p in sc[k + '_逐页'] if sc[k + '_逐页'][p] > r8[k + '_逐页'][p]], key=int) for k in ('主', '严')}
-        imp = {k: sorted([p for p in sc[k + '_逐页'] if sc[k + '_逐页'][p] < r8[k + '_逐页'][p]], key=int) for k in ('主', '严')}
-        res[vn] = {'配置': cfg, '成绩': sc, '与第二版正文逐字相同': body(pred) == body(ref8_pred),
-                   '与第二版正文逐字相同_计分页': all(body({p: pred[p]}) == body({p: ref8_pred[p]}) for p in sc['主_逐页']),
-                   '与第二版正文不同的页': sorted([p for p in pred if body({p: pred[p]}) != body({p: ref8_pred[p]})], key=int),
-                   '相对第二版_主': sc['主']['错字'] - r8['主']['错字'], '相对第二版_严': sc['严']['错字'] - r8['严']['错字'], '逐页退步': reg, '逐页改善': imp}
-        if vn == '按配置':
-            json.dump(full, open(H / '预测' / f'{s}.json', 'w'), ensure_ascii=False, indent=1, default=str)
-            json.dump(M, open(H / '元数据' / f'{s}_逐页.json', 'w'), ensure_ascii=False, indent=1, default=str)
-        else:
-            json.dump(full, open(H / '预测' / f'{s}_{vn}.json', 'w'), ensure_ascii=False, indent=1, default=str)
-        json.dump(logs, open(H / '日志' / f'{s}_{vn}_规则日志.json', 'w'), ensure_ascii=False, indent=1, default=str)
-        print(s, vn, '主', sc['主']['错字'], '严', sc['严']['错字'], '不计顺序', sc['不计顺序']['错字'], '与第二版相同', res[vn]['与第二版正文逐字相同'], '计分页相同', res[vn]['与第二版正文逐字相同_计分页'], '不同页', res[vn]['与第二版正文不同的页'], '退步', reg, flush=True)
-    res['第二版'] = {'成绩': r8}
-    json.dump(res, open(H / '成绩' / f'{s}.json', 'w'), ensure_ascii=False, indent=1)
-    summary.setdefault('数据集', {})[s] = {vn: {k: v for k, v in r.items() if k not in ('配置',)} for vn, r in res.items()}
-    json.dump(summary, open(H / '汇总.json', 'w'), ensure_ascii=False, indent=1, default=str)
-print('完成；百度调用 0 次')
+            if not Path(sg['C']).is_file():
+                missing.append(f"{s}/{sg['tag']} 底座输入 C.json：{sg['C']}")
+            if not (Path(sg['sa_o']) / 'call_summary.json').is_file():
+                missing.append(f"{s}/{sg['tag']} 原图 scheme_a 缓存（缺 call_summary.json）：{sg['sa_o']}")
+            if not (Path(sg['sa_p2']) / 'call_summary.json').is_file():
+                missing.append(f"{s}/{sg['tag']} 去章图 scheme_a 缓存（缺 call_summary.json）：{sg['sa_p2']}")
+            if not Path(sg['pdf']).is_file():
+                missing.append(f"{s}/{sg['tag']} 扫描件：{sg['pdf']}")
+        ref = REFS.get(s)
+        if ref is not None and not Path(ref).exists():
+            missing.append(f"{s} 参照：{ref}")
+    if missing:
+        raise LP.MissingInputError('正式运行缺少必要输入、缓存或参照：\n' + '\n'.join(missing) + f'\n请设置环境变量 {LP.ENV_BAIDU} 指向原试验机 baidu 工作根后重试。未写入任何成绩文件。')
+
+def main(argv=None):
+    argv = list(argv or sys.argv)
+    ONLY = argv[1:] or ['测试样本A'] + list(SA.SETS) + ['江苏']
+    VARS = {'按配置': CFG}
+    _require_official(ONLY)
+    for d in ('中间', '预测', '元数据', '成绩', '日志'): (H / d).mkdir(exist_ok=True)
+    summary = json.load(open(H / '汇总.json')) if (H / '汇总.json').exists() else {}
+    summary['缓存核对'] = cache_check(list(DATA)); print('缓存核对', {k: v for k, v in summary['缓存核对'].items() if k != '失败明细'}, flush=True)
+    assert summary['缓存核对']['校验失败'] == 0 and summary['缓存核对']['真实调用'] == 0
+    for s in ONLY:
+        a = {}
+        for sg in DATA[s]:
+            a[sg['tag']] = base(sg, H / '中间')
+        res = {}; ref8_pred = ref8(s); r8 = score(REFS[s], ref8_pred)
+        for vn, cfg in VARS.items():
+            pred, logs, chk = {}, {}, {}
+            for sg in DATA[s]:
+                sub, lg = layers(a[sg['tag']], sg, cfg); logs[sg['tag']] = lg
+                for q, v in sub.items():
+                    p = int(q) + sg['off']
+                    if sg['keep'](int(q)):   # keep 按段内页号判断
+                        pred[str(p)] = v
+                for q, v in (lg.get('第三层核对') or {}).items(): chk[str(int(q) + sg['off'])] = v
+            pred = {p: pred[p] for p in sorted(pred, key=int)}
+            M = meta(pred, chk, cfg); full = {p: {**v, 'meta': M[p]} for p, v in pred.items()}
+            sc = score(REFS[s], pred)
+            reg = {k: sorted([p for p in sc[k + '_逐页'] if sc[k + '_逐页'][p] > r8[k + '_逐页'][p]], key=int) for k in ('主', '严')}
+            imp = {k: sorted([p for p in sc[k + '_逐页'] if sc[k + '_逐页'][p] < r8[k + '_逐页'][p]], key=int) for k in ('主', '严')}
+            res[vn] = {'配置': cfg, '成绩': sc, '与第二版正文逐字相同': body(pred) == body(ref8_pred),
+                       '与第二版正文逐字相同_计分页': all(body({p: pred[p]}) == body({p: ref8_pred[p]}) for p in sc['主_逐页']),
+                       '与第二版正文不同的页': sorted([p for p in pred if body({p: pred[p]}) != body({p: ref8_pred[p]})], key=int),
+                       '相对第二版_主': sc['主']['错字'] - r8['主']['错字'], '相对第二版_严': sc['严']['错字'] - r8['严']['错字'], '逐页退步': reg, '逐页改善': imp}
+            if vn == '按配置':
+                json.dump(full, open(H / '预测' / f'{s}.json', 'w'), ensure_ascii=False, indent=1, default=str)
+                json.dump(M, open(H / '元数据' / f'{s}_逐页.json', 'w'), ensure_ascii=False, indent=1, default=str)
+            else:
+                json.dump(full, open(H / '预测' / f'{s}_{vn}.json', 'w'), ensure_ascii=False, indent=1, default=str)
+            json.dump(logs, open(H / '日志' / f'{s}_{vn}_规则日志.json', 'w'), ensure_ascii=False, indent=1, default=str)
+            print(s, vn, '主', sc['主']['错字'], '严', sc['严']['错字'], '不计顺序', sc['不计顺序']['错字'], '与第二版相同', res[vn]['与第二版正文逐字相同'], '计分页相同', res[vn]['与第二版正文逐字相同_计分页'], '不同页', res[vn]['与第二版正文不同的页'], '退步', reg, flush=True)
+        res['第二版'] = {'成绩': r8}
+        json.dump(res, open(H / '成绩' / f'{s}.json', 'w'), ensure_ascii=False, indent=1)
+        summary.setdefault('数据集', {})[s] = {vn: {k: v for k, v in r.items() if k not in ('配置',)} for vn, r in res.items()}
+        json.dump(summary, open(H / '汇总.json', 'w'), ensure_ascii=False, indent=1, default=str)
+    print('完成；百度调用 0 次')
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception as e:
+        if type(e).__name__ == 'MissingInputError':
+            print(e, file=sys.stderr)
+            sys.exit(1)
+        raise

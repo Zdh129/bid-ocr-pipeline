@@ -4,12 +4,19 @@ import copy, json, sys
 from collections import Counter
 from pathlib import Path
 sys.dont_write_bytecode = True
-H = Path(__file__).resolve().parents[1]; O = H.parent; ROOT = O.parent
-W = O / 'swisstransfer盲测'; H5 = W / '组合五副本'; src = H5 / '复跑_第五轮.py'
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+H = Path(__file__).resolve().parents[1]
+# 代码与线缓存用本仓库副本；各集 scheme_a、参照、段清单等数据走 OCR_BAIDU_ROOT。
+O = LP.baidu_root_path() / 'output'; ROOT = LP.baidu_root_path()
+W = O / 'swisstransfer盲测'; H5 = LP.v3_root() / '工程/output/swisstransfer盲测/组合五副本'; src = H5 / '复跑_第五轮.py'
 NS = {'__file__': str(src), '__name__': 'combo_header'}
-exec(compile(src.read_text(encoding='utf-8').split('# ---------- 主流程 ----------')[0], str(src), 'exec'), NS)   # 含安全检查：有网络即退出
+exec(compile(src.read_text(encoding='utf-8').split('# ---------- 主流程 ----------')[0], str(src), 'exec'), NS)
 CFG5 = copy.deepcopy(NS['CFG']); layers = NS['layers']; score5 = NS['score']; REFS = dict(NS['REFS']); DATA = NS['DATA']
-sys.path.insert(0, str(O / 'synth18e专项优化/工具'))
+sys.path.insert(0, str(LP.v3_root() / '工程/output/synth18e专项优化/工具'))
 from 公共 import F as ZF
 import 规则_专项 as Z
 bs_norm = None
@@ -32,13 +39,27 @@ def _sg(tag, R, C, pdf, lines, vert, off=0, keep=None, name='bk', sa_o=None, sa_
                 rr=Path(rr or R / 'reread/A_P2/results.json'), vert=Path(vert), off=off, keep=keep or (lambda p: True))
 H6 = O / '第六轮_组合五乙1优化/输入快照'   # 只读
 SEGS = {k: [dict(v) for v in vs] for k, vs in DATA.items()}
-SEGS['synth18e'] = [_sg('synth18e', O / 'synth18e', H6 / 'synth18e_C.json', '/workspace/pdf-test/synth18e/synth18e-scan.pdf', H6 / 'lines_synth18e',
+_PT = LP.pdf_test_root_path()
+SEGS['synth18e'] = [_sg('synth18e', O / 'synth18e', H6 / 'synth18e_C.json', str(_PT / 'synth18e/synth18e-scan.pdf'), H6 / 'lines_synth18e',
                         O / 'synth18e/synth18e/vertical/results.json', name='synth18e')]
-SEGS['synth18b'] = [_sg('synth18b', O / 'synth18b', None, '/workspace/pdf-test/synth18b/synth18b-scan.pdf', H / '线缓存/synth18b', '/nonexistent', name='synth18b')]
-for tag, R in (('盲测_补跑', W / '补跑/运行'), ('盲测_重跑', W / '补跑_字体重跑/运行')):
-    s = json.load(open(R / '段.json'))[0]
-    SEGS.setdefault('盲测', []).append(_sg(tag, R, s['C'], s['pdf'], s['lines'], R / 'bk/vertical/results.json'))
-REFS['synth18e'] = Path('/workspace/pdf-test/synth18e'); REFS['synth18b'] = Path('/workspace/pdf-test/synth18b')
+SEGS['synth18b'] = [_sg('synth18b', O / 'synth18b', None, str(_PT / 'synth18b/synth18b-scan.pdf'), H / '线缓存/synth18b', '/nonexistent', name='synth18b')]
+REFS['synth18e'] = _PT / 'synth18e'; REFS['synth18b'] = _PT / 'synth18b'
+_BLIND_SEGS_LOADED = False
+def _ensure_blind_segs():
+    global _BLIND_SEGS_LOADED
+    if _BLIND_SEGS_LOADED:
+        return
+    for tag, R in (('盲测_补跑', W / '补跑/运行'), ('盲测_重跑', W / '补跑_字体重跑/运行')):
+        s = LP.load_json(R / '段.json', f'{tag} 段.json', LP.ENV_BAIDU)[0]
+        SEGS.setdefault('盲测', []).append(_sg(tag, R, s['C'], s['pdf'], s['lines'], R / 'bk/vertical/results.json'))
+    _BLIND_SEGS_LOADED = True
+
+class _Segs(dict):
+    def __getitem__(self, k):
+        if k == '盲测':
+            _ensure_blind_segs()
+        return dict.__getitem__(self, k)
+SEGS = _Segs(SEGS)
 BASE5 = {'synth18e': H6 / 'synth18e_原路线_底座.json', '盲测_补跑': W / '补跑/运行/预测/组合五_中间/swiss_底座.json', '盲测_重跑': W / '补跑_字体重跑/运行/预测/组合五_中间/swiss_底座.json'}
 def base5(sg):
     f = BASE5.get(sg['tag'], H5 / '中间' / f"{sg['tag']}_底座.json")
@@ -48,7 +69,7 @@ def hp_file(sg, rebuild=False):
     if f.exists() and not rebuild: return f
     out = H / '重建_裸高精度' / sg['tag']; g = out / 'pred_pages.json'
     if not g.exists():   # 缓存里没有落盘的裸高精度预测：用原 build_scheme_a（routed）从已缓存的 scheme_a 原始返回离线重建，只写本目录
-        sys.path.insert(0, str(ROOT / 'scripts')); import blind20_build as BB
+        sys.path.insert(0, str(LP.repo_root() / 'scripts')); import blind20_build as BB
         BB.build_scheme_a(sg['sa_o'], out, 'routed')
     return g
 def hp(sg):
@@ -57,14 +78,21 @@ def hp(sg):
 def Cpred(sg):
     if not sg['C'] or not Path(sg['C']).exists(): return None
     return json.load(open(sg['C']))
-REP = {str(x['原补跑页']): str(x['output_page']) for x in json.load(open(W / '补跑_字体重跑/输入/页对照.json'))['pages']}
+_REP = None
+def _rep():
+    global _REP
+    if _REP is None:
+        f = W / '补跑_字体重跑/输入/页对照.json'
+        _REP = {str(x['原补跑页']): str(x['output_page']) for x in LP.load_json(f, '页对照.json', LP.ENV_BAIDU)['pages']}
+    return _REP
 def assemble(s, fn):
     """fn(sg) -> {段内页: 页} 或 None；按 off/keep 拼成整集；盲测用字体重跑 9 页替换。"""
     if s == '盲测':
+        _ensure_blind_segs()
         a = fn(SEGS['盲测'][0]); b = fn(SEGS['盲测'][1])
         if a is None or b is None: return None
         P = {k: v for k, v in a.items()}
-        for q, i in REP.items(): P[q] = b[i]
+        for q, i in _rep().items(): P[q] = b[i]
         return {p: P[p] for p in sorted(P, key=int)}
     pred = {}
     for sg in SEGS[s]:
@@ -88,7 +116,7 @@ def run_layers(start, sg, cfg, y1=True, page_cfg=None):
 # ---------- 计分 ----------
 MZ = W / '补跑_字体重跑/合并65页/参照子集'
 BLIND_GROUPS = {'众创隐藏层': '隐藏OCR层_4. 众创', '荣和可见层': '可见文字层_2. 荣和', '65页可见层合计': '可见文字层_合计'}
-sys.path.insert(0, str(O / '博凯_清零/工具')); import 计分 as S3
+sys.path.insert(0, str(LP.v3_root() / '工程/output/博凯_清零/工具')); import 计分 as S3
 T = NS['T']; KK = ('ref_chars', 'matches', 'deletions', 'substitutions', 'insertions'); E = lambda o: o['deletions'] + o['substitutions'] + o['insertions']
 def _detail(rd, pr):
     bs, refs, rj, mp, img = S3.load(rd); pr = copy.deepcopy(pr)
@@ -129,9 +157,14 @@ def base_from(sg, start, label):
 def hp2_file(sg):
     out = H / '重建_去章高精度' / sg['tag']; g = out / 'pred_pages.json'
     if not g.exists():
-        sys.path.insert(0, str(ROOT / 'scripts')); import blind20_build as BB
+        sys.path.insert(0, str(LP.repo_root() / 'scripts')); import blind20_build as BB
         BB.build_scheme_a(sg['sa_p2'], out, 'routed')
     return g
 def hp2(sg):
     return {str(k): {'sections': v['sections'], 'seal': v.get('seal') or ''} for k, v in json.load(open(hp2_file(sg))).items()}
 def sg_p2(sg): return {**sg, 'sa_o': sg['sa_p2']}
+
+def __getattr__(name):
+    if name == 'REP':
+        return _rep()
+    raise AttributeError(name)

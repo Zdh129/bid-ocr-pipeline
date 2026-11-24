@@ -2,7 +2,13 @@
 import copy, json, sys
 from collections import Counter
 from pathlib import Path
-ROOT = Path('/workspace/pdf-test/baidu'); TS = ROOT / 'output/盲测_版面约束/版面分析优化计划/试算'
+import sys as _sys
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        _sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+ROOT = LP.baidu_root_path(); TS = ROOT / 'output/盲测_版面约束/版面分析优化计划/试算'
 sys.path[:0] = [str(TS / '第5轮/综合测试_2776d4b'), str(ROOT / 'src'), str(ROOT / 'scripts')]
 import sets_all as SA, synth18b_score as SB, tolerant_score as T
 BK = ROOT / 'output/博凯文件_最优路线测试'; JS = BK / '优化_第4轮/江苏留出'

@@ -8,7 +8,7 @@
 预测 JSON：{ "页号": { "sections": [...], "seal": "..." }, ... }
 scheme-a 目录：高精度含位置的缓存（含 raw/ 与 call_summary.json，格式与原试验工程相同）。
 没有缓存时不要调用百度，请先按仓库根 README「如何运行」在确认费用后生成缓存。
-完整 v6（含 v5 底座的旋转/分流等）入口是 公共v6.v6，它在 import 时会读测试集路径，需要本地缓存，见 复跑.sh。
+完整 v6（含 v5 底座的旋转/分流等）入口是 公共v6.v6 / 评分.py；模块 import 不再读测试集，正式运行缺缓存时会明确报错，见 复跑.sh。
 """
 from __future__ import annotations
 import argparse, json, sys

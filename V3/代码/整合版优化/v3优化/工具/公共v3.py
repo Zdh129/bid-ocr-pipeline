@@ -6,12 +6,17 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 V = Path(__file__).resolve().parents[1]; H = V.parent
 sys.path[:0] = [str(Path(__file__).parent), str(H / '工具'), str(H / '旋转页规则/工具')]
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
 def _mod(name, path):
     s = importlib.util.spec_from_file_location(name, path); m = importlib.util.module_from_spec(s); s.loader.exec_module(m); return m
 C25 = _mod('C25', H / '工具/公共25.py')
 C8 = _mod('C8', H / '工具/公共25.py')
 import 难页特征 as F, 后处理_v2 as PP, 版面规则 as R, 旋转规则 as RR
-sys.path.insert(0, '/workspace/pdf-test/baidu/output/整合版_裸高精度底座/工具')
+sys.path.insert(0, str(LP.v3_root() / '工程/output/整合版_裸高精度底座/工具'))
 import 整合框架 as G
 import 公共65 as C65
 A, PO = C25.A, C25.PO
@@ -24,33 +29,89 @@ EXTRA = 87.67   # 交第六轮每页多出的调用成本（¥/页，按 30 页�
 # ---------- 盲测 25 页 ----------
 def _set25():
     six, integ = C25.load('第六轮新版'), C25.load('整合版')
-    DOC = json.load(open(C25.ISO / '运行/orig/work/output/final/scheme_b_standard/pred_pages.json'))
+    docp = C25.ISO / '运行/orig/work/output/final/scheme_b_standard/pred_pages.json'
+    DOC = LP.load_json(docp, '盲测25 pred_pages.json', LP.ENV_BAIDU)
+    LP.require_dir(C25.SA_O, '盲测25 原图高精度 scheme_a 缓存', LP.ENV_BAIDU)
+    LP.require_dir(C25.SA_P2, '盲测25 去章图高精度 scheme_a 缓存', LP.ENV_BAIDU)
     P = []
     for p in range(1, 31):
         P.append(dict(k=str(p), q=p, integ=integ[str(p)], six=six[str(p)], sa_o=C25.SA_O, sa_p2=C25.SA_P2, doc=DOC.get(str(p))))
     return P
 # ---------- 新集 8 页 ----------
-N = H / '新盲测集'; RUN = N / '运行_隔离副本' / '运行'
+def _new8_dir():
+    n = H / '新盲测集'
+    if (n / '清单.json').is_file():
+        return n
+    lab = LP.baidu_root(required=True) / 'output/分流整合版/整合版优化/新盲测集'
+    return LP.require_dir(lab, '新集8 数据目录 新盲测集', LP.ENV_BAIDU)
+N = H / '新盲测集'; RUN = N / '运行_隔离副本' / '运行'  # 默认相对仓库；_set8 会按实际数据根重算
 def _set8():
-    单 = {p['新集页号']: p for p in json.load(open(N / '清单.json'))['页']}
-    C8.REF_DIR = N / '参照草稿'; C8.页表 = {q: {'版式': 单[q]['版式_旧表']} for q in range(1, 9)}; C8.SCORED = list(range(1, 9))
-    sa_o, sa_p2 = RUN / 'orig/work/output/scheme_a', RUN / 'P2/work/output/scheme_a'
-    DOC = json.load(open(RUN / 'orig/work/output/final/scheme_b_standard/pred_pages.json'))
-    six = json.load(open(N / '识别结果/第六轮新版.json')); integ = json.load(open(N / '识别结果/整合版.json'))
+    n = _new8_dir(); run = n / '运行_隔离副本' / '运行'
+    单 = {p['新集页号']: p for p in LP.load_json(n / '清单.json', '新集8 清单.json', LP.ENV_BAIDU)['页']}
+    C8.REF_DIR = n / '参照草稿'; C8.页表 = {q: {'版式': 单[q]['版式_旧表']} for q in range(1, 9)}; C8.SCORED = list(range(1, 9))
+    sa_o, sa_p2 = run / 'orig/work/output/scheme_a', run / 'P2/work/output/scheme_a'
+    DOC = LP.load_json(run / 'orig/work/output/final/scheme_b_standard/pred_pages.json', '新集8 pred_pages.json', LP.ENV_BAIDU)
+    six = LP.load_json(n / '识别结果/第六轮新版.json', '新集8 识别结果 第六轮新版.json', LP.ENV_BAIDU)
+    integ = LP.load_json(n / '识别结果/整合版.json', '新集8 识别结果 整合版.json', LP.ENV_BAIDU)
     return [dict(k=str(p), q=p, integ=integ[str(p)], six=six[str(p)], sa_o=sa_o, sa_p2=sa_p2, doc=DOC.get(str(p))) for p in range(1, 9)]
 # ---------- 65 页（只换扫描件页，文字层页照 整合版_v2（分流口径） 的输出不动） ----------
-ROUTE65 = json.load(open(C65.O / '分流整合版/候选路线_v2/成绩/候选路线_路线.json'))['盲测']
-SCAN65 = [p for p in ROUTE65 if ROUTE65[p] != '文字层']
-BASE65 = json.load(open(H / '预测/65页_整合版_v2（分流口径）.json'))
+_ROUTE65 = _SCAN65 = _BASE65 = None
+def _route65():
+    global _ROUTE65, _SCAN65
+    if _ROUTE65 is None:
+        f = C65.O / '分流整合版/候选路线_v2/成绩/候选路线_路线.json'
+        _ROUTE65 = LP.load_json(f, '65页 候选路线_路线.json', LP.ENV_BAIDU)['盲测']
+        _SCAN65 = [p for p in _ROUTE65 if _ROUTE65[p] != '文字层']
+    return _ROUTE65
+def _scan65():
+    _route65(); return _SCAN65
+def _base65():
+    global _BASE65
+    if _BASE65 is None:
+        f = H / '预测/65页_整合版_v2（分流口径）.json'
+        if not f.is_file():
+            f = LP.baidu_root(required=True) / 'output/分流整合版/整合版优化/预测/65页_整合版_v2（分流口径）.json'
+        _BASE65 = LP.load_json(f, '65页 整合版_v2（分流口径）预测', LP.ENV_BAIDU)
+    return _BASE65
 def _set65():
     integ, six = C65.load(C65.P_INTEG), C65.load(C65.P_SIX); P = []; docs = {}
-    for p in SCAN65:
+    for p in _scan65():
         sg, q = C65.seginfo(p)
         f = sg['doc'].parent / 'pred_pages.json'
         if str(f) not in docs: docs[str(f)] = json.load(open(f))
         P.append(dict(k=p, q=q, integ=integ[p], six=six[p], sa_o=sg['sa_o'], sa_p2=sg['sa_p2'], doc=docs[str(f)].get(str(q))))
     return P
-SETS = {'盲测25': _set25(), '新集8': _set8(), '65扫描': _set65()}
+class _LazySets(dict):
+    def _ensure(self):
+        if '盲测25' not in self:
+            self['盲测25'] = _set25()
+        return self
+    def _ensure_one(self, k):
+        if dict.__contains__(self, k):
+            return
+        if k == '盲测25':
+            self[k] = _set25()
+        elif k == '新集8':
+            self[k] = _set8()
+        elif k == '65扫描':
+            self[k] = _set65()
+        elif k == '新9':
+            raise LP.MissingInputError('尚未载入新扫描9页数据集。请先通过 新扫描9页 入口加载，或设置 OCR_BAIDU_ROOT 后按该集正式入口运行。')
+        else:
+            raise KeyError(k)
+    def __getitem__(self, k):
+        self._ensure_one(k); return dict.__getitem__(self, k)
+    def __contains__(self, k):
+        if dict.__contains__(self, k):
+            return True
+        return k in ('盲测25', '新集8', '65扫描', '新9')
+    def __iter__(self):
+        # 不在迭代时触发加载
+        seen = set(dict.keys(self)) | {'盲测25', '新集8', '65扫描'}
+        if '新9' in dict.keys(self):
+            seen.add('新9')
+        return iter(seen)
+SETS = _LazySets()
 _U = {}
 def units(sa, q):
     k = (str(sa), q)
@@ -137,12 +198,12 @@ def score(set_name, pm):
         r['逐页严'] = {str(q): v['错字'] for q, v in sc['严']['逐页'].items()} if '逐页' in sc['严'] else {}
         r['逐页序'] = {str(q): v['错字'] for q, v in sc['不计顺序']['逐页'].items()} if '逐页' in sc['不计顺序'] else {}
     else:
-        full = dict(BASE65); full.update(pm)
+        full = dict(_base65()); full.update(pm)
         det = G.detail('盲测', full); allp = {**det['众创隐藏层'], **det['65页可见层合计']}
-        a = G.agg(allp, pages=SCAN65)
+        a = G.agg(allp, pages=_scan65())
         r = {c: a[c] for c in ('主', '严', '不计顺序')}; r['参照字数'] = a['参照字数']
-        r['逐页主'] = {p: G.E(allp[p]['主']) for p in SCAN65}; r['逐页序'] = {p: allp[p]['序'] for p in SCAN65}
-        r['逐页严'] = {p: G.E(allp[p]['严']) for p in SCAN65}
+        r['逐页主'] = {p: G.E(allp[p]['主']) for p in _scan65()}; r['逐页序'] = {p: allp[p]['序'] for p in _scan65()}
+        r['逐页严'] = {p: G.E(allp[p]['严']) for p in _scan65()}
     _SC[key] = r; return r
 def run(set_name, fn):
     pm, route = {}, {}
@@ -177,7 +238,7 @@ def _rounds(set_name, pms):
                 n = a['参照字数']
                 _PP[(set_name, k, todo[k][i][0])] = {'n': n, '主m': round((a['读出率'] or 0) * n), '主e': a['错字'], '严m': round((b['读出率'] or 0) * n), '严e': b['错字'], '序': u['错字']}
         else:
-            full = dict(BASE65); full.update(pm)
+            full = dict(_base65()); full.update(pm)
             det = G.detail('盲测', full); allp = {**det['众创隐藏层'], **det['65页可见层合计']}
             for k in keys:
                 if i >= len(todo[k]): continue

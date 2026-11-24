@@ -46,3 +46,12 @@ export M6_LAB_ROOT="$_ENG"
 export V3_ROOT="$_V3_HERE"
 export REPO_ROOT="$_REPO"
 unset _PATHS _JOIN _RULES
+
+# 数据根：若本机已有原试验目录且用户未设置，则导出，便于离线复跑。
+# 不在此写入密钥。原机冻结校验/断网检查需显式设置 OCR_LAB_CHECKS=1。
+if [[ -z "${OCR_BAIDU_ROOT:-}" && -d /workspace/pdf-test/baidu ]]; then
+  export OCR_BAIDU_ROOT="/workspace/pdf-test/baidu"
+fi
+if [[ -z "${OCR_PDF_TEST_ROOT:-}" && -d /workspace/pdf-test/baidu ]]; then
+  export OCR_PDF_TEST_ROOT="/workspace/pdf-test"
+fi

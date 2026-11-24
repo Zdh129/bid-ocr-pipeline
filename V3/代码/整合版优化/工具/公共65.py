@@ -4,11 +4,17 @@ from copy import deepcopy
 from pathlib import Path
 sys.dont_write_bytecode = True
 H = Path(__file__).resolve().parents[1]
-O = Path('/workspace/pdf-test/baidu/output')
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+O = LP.baidu_root_path() / 'output'
 I = O / '整合版_裸高精度底座'
-sys.path.insert(0, str(O / '分流整合版/候选路线_v2/工具'))
+_v3 = Path(__import__('os').environ.get('V3_ROOT') or Path(__file__).resolve().parents[3])
+sys.path.insert(0, str(H.parent / '候选路线_v2' / '工具'))
 import 后处理 as A
-sys.path.insert(0, str(I / '工具'))
+sys.path.insert(0, str(_v3 / '工程/output/整合版_裸高精度底座/工具'))
 import 整合框架 as G
 
 def load(p):

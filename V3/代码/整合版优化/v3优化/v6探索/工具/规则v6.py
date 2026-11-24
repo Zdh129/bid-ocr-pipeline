@@ -6,7 +6,8 @@ import math, unicodedata
 from copy import deepcopy
 from statistics import median
 import sys
-sys.path.insert(0, '/workspace/pdf-test/baidu/output/分流整合版/整合版优化/旋转页规则/工具')
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[3] / '旋转页规则/工具'))
 import 旋转规则 as RR
 
 def _n(s): return ''.join(c for c in unicodedata.normalize('NFKC', s or '') if not c.isspace())

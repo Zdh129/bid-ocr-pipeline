@@ -121,21 +121,21 @@ python scripts/run_scheme_b.py --config config.yaml --input data/<集名>/<集�
 
 ### V2、V3 快照怎么跑
 
-V2、V3 都是候选快照，尚未切换主路径。现有说明中的版本仍是 V2。离线完整复跑需要本地识别缓存，仓库不提供 PDF、参照或缓存。
+V2、V3 都是候选快照，尚未切换主路径。现有说明中的版本仍是 V2。离线完整复跑需要本地识别缓存，仓库不提供 PDF、参照或缓存。路径与依赖加载的修复见根目录 `修复说明.md`。模块 import 不再读取测试集；正式入口缺少缓存或输入时会明确报错，不会写出成绩。
 
 ```bash
 # V3（优化成本），候选版、未独立验证
 source V3/环境.sh
-bash V3/复跑.sh                  # 先做导入自测与规则干跑；有缓存再完整复跑
+bash V3/复跑.sh                  # 先做 sha / 导入自测与规则干跑，再跑正式入口
 python3 V3/跑新材料.py --pred 预测.json --scheme-a scheme_a目录 --out 结果.json
 
-# V2：先补齐依赖路径，再按该目录说明离线复跑
+# V2
 source V2/环境.sh
 bash V2/复跑_仓库.sh             # 只做导入自测
-# 有本地缓存时再用原入口：bash V2/复跑.sh
+bash V2/复跑.sh                 # 正式离线复跑（缺缓存时明确报错）
 ```
 
-从零跑一份新材料：先按上文生成 scheme_a 等缓存（调用百度前确认费用；密钥只用 `BAIDU_OCR_API_KEY` / `BAIDU_OCR_SECRET_KEY`，或别名 `BAIDU_API_KEY` / `BAIDU_SECRET_KEY`），再运行对应版本的离线入口。
+从零跑一份新材料：先按上文生成 scheme_a 等缓存（调用百度前确认费用；密钥只用 `BAIDU_OCR_API_KEY` / `BAIDU_OCR_SECRET_KEY`，或别名 `BAIDU_API_KEY` / `BAIDU_SECRET_KEY`），再运行对应版本的离线入口。完整复跑还需要 `OCR_BAIDU_ROOT`（以及必要时的 `OCR_PDF_TEST_ROOT`）；原机冻结校验和断网检查由 `OCR_LAB_CHECKS` 开启。
 
 ## 如何计分
 

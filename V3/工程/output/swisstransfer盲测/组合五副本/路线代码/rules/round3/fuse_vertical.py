@@ -16,12 +16,27 @@
 import json, sys, re, copy, importlib.util, hashlib
 from difflib import SequenceMatcher
 from pathlib import Path
-ROOT = Path('/workspace/pdf-test/baidu')
-sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'scripts')]
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+ROOT = LP.baidu_root_path()
+sys.path[:0] = [str(LP.repo_root() / 'src'), str(LP.repo_root() / 'scripts')]
 B = ROOT / 'output/盲测_版面约束'; RUN = B / '运行'; SET = B / 'synth_blind_g'
 OUT = B / '版面分析优化计划/试算/并行_竖排融合'
-spec = importlib.util.spec_from_file_location('vm_frozen', B / '冻结规则/基线C_方案E/src/baidu_ocr/postprocess/vertical_margin.py')
-VM = importlib.util.module_from_spec(spec); spec.loader.exec_module(VM)
+_VM = None
+def _load_vm():
+    global _VM
+    if _VM is None:
+        vp = LP.find_vertical_margin()
+        spec = importlib.util.spec_from_file_location('vm_frozen', vp)
+        _VM = importlib.util.module_from_spec(spec); spec.loader.exec_module(_VM)
+    return _VM
+class _VMProxy:
+    def __getattr__(self, name):
+        return getattr(_load_vm(), name)
+VM = _VMProxy()
 PX = 200 / 72.0
 def jl(p): return json.loads(Path(p).read_text(encoding='utf-8'))
 def wj(p, o): Path(p).write_text(json.dumps(o, ensure_ascii=False, indent=1), encoding='utf-8')

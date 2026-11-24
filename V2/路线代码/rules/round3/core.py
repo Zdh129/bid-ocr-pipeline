@@ -2,9 +2,17 @@
 只 import 冻结规则/ 里的副本，不改它们；表格线缓存放在 试算/表格线缓存/（从已有缓存复制，缺页时本地 pdftoppm+OpenCV 生成）。"""
 import json, sys, copy
 from pathlib import Path
-ROOT = Path('/workspace/pdf-test/baidu')
+for _k in range(1, 9):
+    _s = Path(__file__).resolve().parents[_k] / 'scripts'
+    if (_s / 'ocr_lab_paths.py').exists():
+        sys.path.insert(0, str(_s)); break
+import ocr_lab_paths as LP
+ROOT = LP.baidu_root_path()
 B = ROOT / 'output/盲测_版面约束'; FZ = B / '冻结规则'; RUN = B / '运行'; TS = B / '版面分析优化计划/试算'
 sys.path.insert(0, str(FZ))
+_bc = Path(__file__).resolve().parent.parent / 'baseline_c'
+if _bc.is_dir():
+    sys.path.insert(0, str(_bc))
 import variants_blind as VB                     # 设置好 sys.path 与 common（冻结副本）
 import layout_posthoc as LP, layout as L, lines as LN, gate as G
 from baidu_ocr.hybrid.inputs import a_chars_for_page
